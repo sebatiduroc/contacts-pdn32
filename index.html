@@ -494,22 +494,8 @@ td a:hover { text-decoration: underline; }
 @keyframes spin { to { transform: rotate(360deg); } }
 #loader p { color: var(--gris-texte); font-size: 0.9rem; }
 
-/* ===== VÉRIFICATION ===== */
-.verif-banner {
-  background: linear-gradient(135deg, var(--bleu) 0%, var(--bleu-clair) 100%);
-  color: var(--blanc);
-  border-radius: 10px;
-  padding: 18px 24px;
-  margin-bottom: 20px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 14px;
-  box-shadow: var(--ombre);
-}
-.verif-banner p { font-size: 0.92rem; opacity: 0.9; }
-.verif-banner strong { font-size: 1rem; display: block; margin-bottom: 4px; }
+/* adresse avec sauts de ligne */
+.fiche-field-value.pre { white-space: pre-line; }
 
 /* ===== RESPONSIVE ===== */
 @media (max-width: 600px) {
@@ -666,13 +652,6 @@ td a:hover { text-decoration: underline; }
 
 <!-- MA FICHE -->
 <div id="screen-ma-fiche" class="screen">
-  <div id="verif-banner" class="verif-banner" style="display:none">
-    <div>
-      <strong>✅ Vérification de votre fiche</strong>
-      <p>Confirmez que vos informations sont à jour en cliquant sur le bouton.</p>
-    </div>
-    <button class="btn btn-success" onclick="verifierFiche()">Ma fiche est à jour</button>
-  </div>
   <div id="ma-fiche-content"></div>
 </div>
 
@@ -778,33 +757,17 @@ td a:hover { text-decoration: underline; }
       </div>
       <div class="form-row">
         <div class="form-group">
-          <label>Type réseau social</label>
-          <select id="edit-rs-type">
-            <option value="">— Aucun —</option>
-            <option value="Facebook">Facebook</option>
-            <option value="Instagram">Instagram</option>
-            <option value="LinkedIn">LinkedIn</option>
-            <option value="Autre">Autre</option>
-          </select>
+          <label>Facebook (URL ou nom du compte)</label>
+          <input type="text" id="edit-rs-lien" placeholder="ex: https://facebook.com/moncompte">
         </div>
         <div class="form-group">
-          <label>Lien / identifiant réseau social</label>
-          <input type="text" id="edit-rs-lien" placeholder="URL ou nom du compte">
+          <label>Lien site national</label>
+          <input type="text" id="edit-site" placeholder="https://…">
         </div>
       </div>
       <div class="form-group">
-        <label>Lien site national</label>
-        <input type="text" id="edit-site" placeholder="https://…">
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label>GPS Latitude</label>
-          <input type="text" id="edit-lat" placeholder="ex: 43.6477">
-        </div>
-        <div class="form-group">
-          <label>GPS Longitude</label>
-          <input type="text" id="edit-lng" placeholder="ex: 0.5792">
-        </div>
+        <label>Coordonnées GPS (format : 43.842655,0.739157)</label>
+        <input type="text" id="edit-gps" placeholder="ex: 43.842655,0.739157">
       </div>
       <div id="err-edit" class="msg-error"></div>
     </div>
@@ -985,6 +948,10 @@ onAuthStateChanged(auth, async (user) => {
 
     populateFiltres();
     renderTableau();
+    // Horodater la connexion comme dernière vérification
+    if (currentUserData) {
+      updateDoc(doc(db, 'promeneurs', currentUserData.id), { dateVerif: serverTimestamp() });
+    }
     loader(false);
   } else {
     currentUser = null; currentUserData = null;
@@ -1044,9 +1011,9 @@ function renderTableau() {
   ficheList.forEach((p, i) => {
     const tr = document.createElement('tr');
     const tels = [p.tel1, p.tel2].filter(Boolean).map(telLink).join('<br>');
-    const rs = p.rsType && p.rsLien
-      ? `<a href="${p.rsLien.startsWith('http') ? p.rsLien : 'https://' + p.rsLien}" target="_blank">${p.rsType}</a>`
-      : (p.rsLien || '—');
+    const rs = p.rsLien
+      ? `<a href="${p.rsLien.startsWith('http') ? p.rsLien : 'https://' + p.rsLien}" target="_blank">Facebook</a>`
+      : '—';
     const email = p.email ? `<a href="mailto:${p.email}">${p.email}</a>` : '—';
     let html = `
       <td class="td-nom" onclick="ouvrirFiche(${i})">${p.nom || '—'}</td>
@@ -1088,11 +1055,12 @@ function renderFiche() {
   document.getElementById('btn-next').disabled = ficheIndex === ficheList.length - 1;
 
   const tels = [p.tel1, p.tel2].filter(Boolean);
-  const rs = p.rsType && p.rsLien
-    ? `<a href="${p.rsLien.startsWith('http') ? p.rsLien : 'https://' + p.rsLien}" target="_blank">${p.rsType} — ${p.rsLien}</a>`
-    : (p.rsLien || '—');
+  const rs = p.rsLien
+    ? `<a href="${p.rsLien.startsWith('http') ? p.rsLien : 'https://' + p.rsLien}" target="_blank">${p.rsLien}</a>`
+    : '—';
   const site = p.site ? `<a href="${p.site}" target="_blank">${p.site}</a>` : '—';
   const emailLink = p.email ? `<a href="mailto:${p.email}">${p.email}</a>` : '—';
+  const gpsDisplay = p.gps || ((p.lat && p.lng) ? `${p.lat},${p.lng}` : '');
 
   let datesHtml = '';
   if (isCoordinateur) {
@@ -1126,10 +1094,10 @@ function renderFiche() {
         </div>
         <div class="fiche-field">
           <div class="fiche-field-label">Adresse postale</div>
-          <div class="fiche-field-value">${p.adresse || '—'}</div>
+          <div class="fiche-field-value pre">${p.adresse || '—'}</div>
         </div>
         <div class="fiche-field">
-          <div class="fiche-field-label">Réseau social</div>
+          <div class="fiche-field-label">Facebook</div>
           <div class="fiche-field-value">${rs}</div>
         </div>
         <div class="fiche-field">
@@ -1140,10 +1108,10 @@ function renderFiche() {
           <div class="fiche-field-label">Référent CAF</div>
           <div class="fiche-field-value">${p.referent || '—'}</div>
         </div>
-        ${p.lat && p.lng ? `
+        ${gpsDisplay ? `
         <div class="fiche-field">
           <div class="fiche-field-label">Coordonnées GPS</div>
-          <div class="fiche-field-value">${p.lat}, ${p.lng}</div>
+          <div class="fiche-field-value">${gpsDisplay}</div>
         </div>` : ''}
       </div>
       ${datesHtml}
@@ -1165,11 +1133,11 @@ window.ouvrirEdit = function(id) {
   document.getElementById('edit-tel2').value = p.tel2 || '';
   document.getElementById('edit-adresse').value = p.adresse || '';
   document.getElementById('edit-email').value = p.email || '';
-  document.getElementById('edit-rs-type').value = p.rsType || '';
   document.getElementById('edit-rs-lien').value = p.rsLien || '';
   document.getElementById('edit-site').value = p.site || '';
-  document.getElementById('edit-lat').value = p.lat || '';
-  document.getElementById('edit-lng').value = p.lng || '';
+  // GPS combiné
+  const gps = (p.lat && p.lng) ? `${p.lat},${p.lng}` : (p.gps || '');
+  document.getElementById('edit-gps').value = gps;
   hideErr('err-edit');
   document.getElementById('modal-edit-title').textContent = `Modifier — ${p.nom || 'Fiche'}`;
   document.getElementById('modal-edit').classList.add('open');
@@ -1184,6 +1152,15 @@ window.sauvegarderFiche = async function() {
   const p = allPromeneurs.find(x => x.id === id);
   if (!p) return;
 
+  // Parser le champ GPS combiné
+  const gpsRaw = document.getElementById('edit-gps').value.trim();
+  let lat = '', lng = '';
+  if (gpsRaw) {
+    const parts = gpsRaw.split(',');
+    if (parts.length === 2) { lat = parts[0].trim(); lng = parts[1].trim(); }
+    else { showErr('err-edit', 'Format GPS invalide. Utilisez : 43.842655,0.739157'); return; }
+  }
+
   const nouveau = {
     nom: document.getElementById('edit-nom').value.trim(),
     public: document.getElementById('edit-public').disabled ? p.public : document.getElementById('edit-public').value,
@@ -1191,13 +1168,11 @@ window.sauvegarderFiche = async function() {
     referent: document.getElementById('edit-referent').value.trim(),
     tel1: document.getElementById('edit-tel1').value.trim(),
     tel2: document.getElementById('edit-tel2').value.trim(),
-    adresse: document.getElementById('edit-adresse').value.trim(),
+    adresse: document.getElementById('edit-adresse').value,
     email: document.getElementById('edit-email').value.trim(),
-    rsType: document.getElementById('edit-rs-type').value,
     rsLien: document.getElementById('edit-rs-lien').value.trim(),
     site: document.getElementById('edit-site').value.trim(),
-    lat: document.getElementById('edit-lat').value.trim(),
-    lng: document.getElementById('edit-lng').value.trim(),
+    gps: gpsRaw, lat, lng,
     dateMaj: serverTimestamp()
   };
 
@@ -1205,29 +1180,31 @@ window.sauvegarderFiche = async function() {
   const champs = {
     nom: 'Nom Prénom', public: 'Public', secteur: 'Secteur', referent: 'Référent CAF',
     tel1: 'Téléphone 1', tel2: 'Téléphone 2', adresse: 'Adresse',
-    email: 'Email', rsType: 'Type réseau social', rsLien: 'Réseau social',
-    site: 'Site national', lat: 'GPS Latitude', lng: 'GPS Longitude'
+    email: 'Email', rsLien: 'Facebook',
+    site: 'Site national', gps: 'GPS'
   };
   let diff = '';
+  const ancienGps = (p.lat && p.lng) ? `${p.lat},${p.lng}` : (p.gps || '');
+  const champsPourDiff = { ...nouveau, gps: gpsRaw };
+  const anciensAvecGps = { ...p, gps: ancienGps };
   Object.entries(champs).forEach(([k, label]) => {
-    const avant = p[k] || '';
-    const apres = nouveau[k] || '';
-    if (avant !== apres) {
-      diff += `• ${label} : "${avant}" → "${apres}"\n`;
-    }
+    const avant = (anciensAvecGps[k] || '').toString().trim();
+    const apres = (champsPourDiff[k] || '').toString().trim();
+    if (avant !== apres) diff += `• ${label} : "${avant}" → "${apres}"\n`;
   });
 
   try {
     await updateDoc(doc(db, 'promeneurs', id), nouveau);
-    // Mettre à jour local
+    // Mise à jour locale immédiate
     const idx = allPromeneurs.findIndex(x => x.id === id);
     allPromeneurs[idx] = { ...p, ...nouveau };
+    // Mettre à jour currentUserData si c'est sa propre fiche
+    if (currentUserData && currentUserData.id === id) {
+      currentUserData = { ...currentUserData, ...nouveau };
+    }
     ficheList = getFiltered();
 
-    // Envoyer email si des champs ont changé
-    if (diff) {
-      await envoyerEmailDiff(p.nom || 'Inconnu', diff);
-    }
+    if (diff) await envoyerEmailDiff(p.nom || 'Inconnu', diff);
 
     closeModal('modal-edit');
     toast('✅ Fiche enregistrée !');
@@ -1257,20 +1234,13 @@ async function envoyerEmailDiff(promeneur, modifications) {
 function renderMaFiche() {
   if (!currentUserData) {
     document.getElementById('ma-fiche-content').innerHTML = '<p style="color:var(--gris-texte)">Aucune fiche associée à votre compte.</p>';
-    document.getElementById('verif-banner').style.display = 'none';
     return;
   }
-  document.getElementById('verif-banner').style.display = 'flex';
-  // Afficher la fiche en mode lecture avec bouton édition
   const p = currentUserData;
-  const idx = allPromeneurs.findIndex(x => x.id === p.id);
-  ficheList = allPromeneurs;
-  ficheIndex = idx >= 0 ? idx : 0;
-
   const tels = [p.tel1, p.tel2].filter(Boolean);
-  const rs = p.rsType && p.rsLien
-    ? `<a href="${p.rsLien.startsWith('http') ? p.rsLien : 'https://' + p.rsLien}" target="_blank">${p.rsType} — ${p.rsLien}</a>`
-    : (p.rsLien || '—');
+  const rs = p.rsLien
+    ? `<a href="${p.rsLien.startsWith('http') ? p.rsLien : 'https://' + p.rsLien}" target="_blank">${p.rsLien}</a>`
+    : '—';
 
   document.getElementById('ma-fiche-content').innerHTML = `
     <div class="fiche-container">
@@ -1287,8 +1257,8 @@ function renderMaFiche() {
         <div class="fiche-grid">
           <div class="fiche-field"><div class="fiche-field-label">Téléphone(s)</div><div class="fiche-field-value">${tels.map(telLink).join('<br>') || '—'}</div></div>
           <div class="fiche-field"><div class="fiche-field-label">Email professionnel</div><div class="fiche-field-value">${p.email ? `<a href="mailto:${p.email}">${p.email}</a>` : '—'}</div></div>
-          <div class="fiche-field"><div class="fiche-field-label">Adresse postale</div><div class="fiche-field-value">${p.adresse || '—'}</div></div>
-          <div class="fiche-field"><div class="fiche-field-label">Réseau social</div><div class="fiche-field-value">${rs}</div></div>
+          <div class="fiche-field"><div class="fiche-field-label">Adresse postale</div><div class="fiche-field-value pre">${p.adresse || '—'}</div></div>
+          <div class="fiche-field"><div class="fiche-field-label">Facebook</div><div class="fiche-field-value">${rs}</div></div>
           <div class="fiche-field"><div class="fiche-field-label">Secteur</div><div class="fiche-field-value">${p.secteur || '—'}</div></div>
           <div class="fiche-field"><div class="fiche-field-label">Référent CAF</div><div class="fiche-field-value">${p.referent || '—'}</div></div>
         </div>
@@ -1296,14 +1266,11 @@ function renderMaFiche() {
     </div>`;
 }
 
-window.verifierFiche = async function() {
-  if (!currentUserData) return;
-  await updateDoc(doc(db, 'promeneurs', currentUserData.id), {
-    dateVerif: serverTimestamp()
-  });
-  currentUserData.dateVerif = { toDate: () => new Date() };
-  toast('✅ Vérification enregistrée !');
-};
+    // Horodater la connexion comme dernière vérification
+    if (currentUserData) {
+      await updateDoc(doc(db, 'promeneurs', currentUserData.id), { dateVerif: serverTimestamp() });
+      currentUserData.dateVerif = { toDate: () => new Date() };
+    }
 
 // ===== CARTE =====
 function initCarte() {
@@ -1319,11 +1286,16 @@ function updateMarkers() {
   mapMarkers.forEach(m => mapInstance.removeLayer(m));
   mapMarkers = [];
   const pub = document.getElementById('carte-filtre-public').value;
-  allPromeneurs.filter(p => p.lat && p.lng && (!pub || p.public === pub || p.public === 'Jeunesse + Parentalité'))
-    .forEach(p => {
-      const marker = L.marker([parseFloat(p.lat), parseFloat(p.lng)]);
+  allPromeneurs.filter(p => {
+    const hasGps = (p.gps || (p.lat && p.lng));
+    return hasGps && (!pub || p.public === pub || p.public === 'Jeunesse + Parentalité');
+  }).forEach(p => {
+      const lat = p.lat || (p.gps ? p.gps.split(',')[0].trim() : null);
+      const lng = p.lng || (p.gps ? p.gps.split(',')[1].trim() : null);
+      if (!lat || !lng) return;
+      const marker = L.marker([parseFloat(lat), parseFloat(lng)]);
       marker.bindPopup(`<strong>${p.nom}</strong><br>${badgePublic(p.public)}<br>${p.secteur || ''}`);
-      marker.on('click', () => selectionnerPointRoute(p, marker));
+      marker.on('click', () => selectionnerPointRoute({ ...p, lat, lng }, marker));
       marker.addTo(mapInstance);
       mapMarkers.push(marker);
     });
@@ -1450,8 +1422,8 @@ window.creerFicheVide = async function() {
   if (!nom) { toast('Veuillez saisir un nom'); return; }
   const ref = await addDoc(collection(db, 'promeneurs'), {
     nom, public: 'Jeunesse', secteur: '', referent: '',
-    tel1: '', tel2: '', adresse: '', email: '', rsType: '', rsLien: '',
-    site: '', lat: '', lng: '', dateMaj: serverTimestamp()
+    tel1: '', tel2: '', adresse: '', email: '', rsLien: '',
+    site: '', gps: '', lat: '', lng: '', dateMaj: serverTimestamp()
   });
   allPromeneurs.push({ id: ref.id, nom, public: 'Jeunesse' });
   document.getElementById('new-fiche-nom').value = '';
@@ -1514,7 +1486,7 @@ window.exportPDF = function() {
     </tr></thead><tbody>`;
   filtered.forEach(p => {
     const tels = [p.tel1, p.tel2].filter(Boolean).join(' / ');
-    const rs = p.rsType && p.rsLien ? `${p.rsType}: ${p.rsLien}` : (p.rsLien || '');
+    const rs = p.rsLien || '';
     html += `<tr>
       <td>${p.nom || ''}</td>
       <td>${p.public || ''}</td>
