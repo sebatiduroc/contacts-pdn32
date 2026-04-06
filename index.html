@@ -854,6 +854,23 @@ function telLink(tel) {
   return `<a href="tel:${clean}">${tel}</a>`;
 }
 
+function rsLink(val) {
+  if (!val) return '—';
+  if (val.startsWith('http://') || val.startsWith('https://')) {
+    return `<a href="${val}" target="_blank">${val}</a>`;
+  }
+  if (val.startsWith('www.')) {
+    return `<a href="https://${val}" target="_blank">${val}</a>`;
+  }
+  // Nom avec espaces → recherche Facebook
+  if (val.includes(' ')) {
+    const query = encodeURIComponent(val);
+    return `<a href="https://www.facebook.com/search/top?q=${query}" target="_blank">${val}</a>`;
+  }
+  // Identifiant simple sans espace → profil direct
+  return `<a href="https://facebook.com/${val}" target="_blank">${val}</a>`;
+}
+
 function badgePublic(pub) {
   const map = {
     'Jeunesse': 'badge-jeunesse',
@@ -1011,9 +1028,7 @@ function renderTableau() {
   ficheList.forEach((p, i) => {
     const tr = document.createElement('tr');
     const tels = [p.tel1, p.tel2].filter(Boolean).map(telLink).join('<br>');
-    const rs = p.rsLien
-      ? `<a href="${p.rsLien.startsWith('http') ? p.rsLien : 'https://' + p.rsLien}" target="_blank">Facebook</a>`
-      : '—';
+    const rs = rsLink(p.rsLien);
     const email = p.email ? `<a href="mailto:${p.email}">${p.email}</a>` : '—';
     let html = `
       <td class="td-nom" onclick="ouvrirFiche(${i})">${p.nom || '—'}</td>
@@ -1055,10 +1070,7 @@ function renderFiche() {
   document.getElementById('btn-next').disabled = ficheIndex === ficheList.length - 1;
 
   const tels = [p.tel1, p.tel2].filter(Boolean);
-  const rs = p.rsLien
-    ? `<a href="${p.rsLien.startsWith('http') ? p.rsLien : 'https://' + p.rsLien}" target="_blank">${p.rsLien}</a>`
-    : '—';
-  const site = p.site ? `<a href="${p.site}" target="_blank">${p.site}</a>` : '—';
+  const rs = rsLink(p.rsLien);
   const emailLink = p.email ? `<a href="mailto:${p.email}">${p.email}</a>` : '—';
   const gpsDisplay = p.gps || ((p.lat && p.lng) ? `${p.lat},${p.lng}` : '');
 
@@ -1238,9 +1250,8 @@ function renderMaFiche() {
   }
   const p = currentUserData;
   const tels = [p.tel1, p.tel2].filter(Boolean);
-  const rs = p.rsLien
-    ? `<a href="${p.rsLien.startsWith('http') ? p.rsLien : 'https://' + p.rsLien}" target="_blank">${p.rsLien}</a>`
-    : '—';
+  const gpsDisplay = p.gps || ((p.lat && p.lng) ? `${p.lat},${p.lng}` : '');
+  const site = p.site ? `<a href="${p.site}" target="_blank">${p.site}</a>` : '—';
 
   document.getElementById('ma-fiche-content').innerHTML = `
     <div class="fiche-container">
@@ -1255,12 +1266,15 @@ function renderMaFiche() {
       </div>
       <div class="fiche-body">
         <div class="fiche-grid">
-          <div class="fiche-field"><div class="fiche-field-label">Téléphone(s)</div><div class="fiche-field-value">${tels.map(telLink).join('<br>') || '—'}</div></div>
+          <div class="fiche-field"><div class="fiche-field-label">Téléphone 1</div><div class="fiche-field-value">${p.tel1 ? telLink(p.tel1) : '—'}</div></div>
+          <div class="fiche-field"><div class="fiche-field-label">Téléphone 2</div><div class="fiche-field-value">${p.tel2 ? telLink(p.tel2) : '—'}</div></div>
           <div class="fiche-field"><div class="fiche-field-label">Email professionnel</div><div class="fiche-field-value">${p.email ? `<a href="mailto:${p.email}">${p.email}</a>` : '—'}</div></div>
           <div class="fiche-field"><div class="fiche-field-label">Adresse postale</div><div class="fiche-field-value pre">${p.adresse || '—'}</div></div>
-          <div class="fiche-field"><div class="fiche-field-label">Facebook</div><div class="fiche-field-value">${rs}</div></div>
+          <div class="fiche-field"><div class="fiche-field-label">Facebook</div><div class="fiche-field-value">${rsLink(p.rsLien)}</div></div>
+          <div class="fiche-field"><div class="fiche-field-label">Site national</div><div class="fiche-field-value">${site}</div></div>
           <div class="fiche-field"><div class="fiche-field-label">Secteur</div><div class="fiche-field-value">${p.secteur || '—'}</div></div>
           <div class="fiche-field"><div class="fiche-field-label">Référent CAF</div><div class="fiche-field-value">${p.referent || '—'}</div></div>
+          <div class="fiche-field"><div class="fiche-field-label">Coordonnées GPS</div><div class="fiche-field-value">${gpsDisplay || '—'}</div></div>
         </div>
       </div>
     </div>`;
