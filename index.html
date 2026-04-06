@@ -1052,8 +1052,10 @@ window.filtrerTableau = function() { renderTableau(); };
 // ===== FICHE =====
 window.ouvrirFiche = function(index) {
   ficheIndex = index;
-  renderFiche();
+  ficheList = getFiltered(); // s'assurer que ficheList est à jour
+  document.getElementById('tab-fiche').style.display = 'inline-block';
   showTab('fiche');
+  renderFiche();
 };
 
 window.ficheNav = function(dir) {
