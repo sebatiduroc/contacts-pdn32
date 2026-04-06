@@ -1,0 +1,1546 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Promeneurs du Net 32</title>
+<link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Source+Sans+3:wght@300;400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+:root {
+  --bleu: #1a3a5c;
+  --bleu-clair: #2d6a9f;
+  --or: #c8973a;
+  --or-clair: #e8b85a;
+  --fond: #f5f2ed;
+  --blanc: #ffffff;
+  --gris: #e8e4dd;
+  --gris-texte: #6b6560;
+  --rouge: #c0392b;
+  --vert: #27ae60;
+  --ombre: 0 2px 12px rgba(26,58,92,0.10);
+  --ombre-forte: 0 4px 24px rgba(26,58,92,0.18);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Source Sans 3', sans-serif;
+  background: var(--fond);
+  color: var(--bleu);
+  min-height: 100vh;
+}
+
+/* ===== EN-TÊTE ===== */
+header {
+  background: var(--bleu);
+  color: var(--blanc);
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 60px;
+  box-shadow: var(--ombre-forte);
+  position: sticky; top: 0; z-index: 100;
+}
+header h1 {
+  font-family: 'Libre Baskerville', serif;
+  font-size: 1.2rem;
+  letter-spacing: 0.03em;
+}
+header h1 span { color: var(--or-clair); }
+#user-info {
+  display: flex; align-items: center; gap: 12px;
+  font-size: 0.85rem;
+}
+#user-name { opacity: 0.85; }
+#btn-logout {
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.35);
+  color: var(--blanc);
+  padding: 5px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  transition: all 0.2s;
+}
+#btn-logout:hover { background: rgba(255,255,255,0.15); }
+
+/* ===== NAVIGATION ===== */
+nav {
+  background: var(--blanc);
+  border-bottom: 2px solid var(--gris);
+  display: flex;
+  gap: 0;
+  padding: 0 24px;
+  overflow-x: auto;
+}
+nav button {
+  background: none; border: none;
+  padding: 14px 20px;
+  cursor: pointer;
+  font-family: 'Source Sans 3', sans-serif;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--gris-texte);
+  border-bottom: 3px solid transparent;
+  margin-bottom: -2px;
+  white-space: nowrap;
+  transition: all 0.2s;
+}
+nav button:hover { color: var(--bleu-clair); }
+nav button.active {
+  color: var(--bleu);
+  border-bottom-color: var(--or);
+}
+
+/* ===== CONTENEUR PRINCIPAL ===== */
+main { padding: 24px; max-width: 1400px; margin: 0 auto; }
+
+/* ===== ÉCRANS ===== */
+.screen { display: none; }
+.screen.active { display: block; }
+
+/* ===== LOGIN ===== */
+#screen-login {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100vh - 60px);
+}
+.login-box {
+  background: var(--blanc);
+  border-radius: 12px;
+  padding: 40px;
+  width: 100%;
+  max-width: 420px;
+  box-shadow: var(--ombre-forte);
+}
+.login-box h2 {
+  font-family: 'Libre Baskerville', serif;
+  font-size: 1.5rem;
+  color: var(--bleu);
+  margin-bottom: 8px;
+}
+.login-box p { color: var(--gris-texte); font-size: 0.9rem; margin-bottom: 28px; }
+.tabs-login {
+  display: flex;
+  border-bottom: 2px solid var(--gris);
+  margin-bottom: 24px;
+}
+.tab-login {
+  flex: 1; padding: 10px;
+  background: none; border: none;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--gris-texte);
+  border-bottom: 3px solid transparent;
+  margin-bottom: -2px;
+  transition: all 0.2s;
+}
+.tab-login.active { color: var(--bleu); border-bottom-color: var(--or); }
+
+/* ===== FORMULAIRES ===== */
+.form-group { margin-bottom: 16px; }
+label { display: block; font-size: 0.82rem; font-weight: 600; color: var(--bleu); margin-bottom: 5px; }
+input[type=text], input[type=email], input[type=password], input[type=tel], textarea, select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1.5px solid var(--gris);
+  border-radius: 6px;
+  font-family: 'Source Sans 3', sans-serif;
+  font-size: 0.92rem;
+  color: var(--bleu);
+  background: var(--fond);
+  transition: border-color 0.2s;
+}
+input:focus, textarea:focus, select:focus {
+  outline: none;
+  border-color: var(--bleu-clair);
+  background: var(--blanc);
+}
+textarea { resize: vertical; min-height: 80px; }
+
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 10px 20px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  font-family: 'Source Sans 3', sans-serif;
+  font-weight: 600;
+  font-size: 0.9rem;
+  transition: all 0.2s;
+}
+.btn-primary { background: var(--bleu); color: var(--blanc); }
+.btn-primary:hover { background: var(--bleu-clair); }
+.btn-secondary { background: var(--gris); color: var(--bleu); }
+.btn-secondary:hover { background: #d8d4cd; }
+.btn-danger { background: var(--rouge); color: var(--blanc); }
+.btn-danger:hover { background: #a93226; }
+.btn-success { background: var(--vert); color: var(--blanc); }
+.btn-success:hover { background: #219a52; }
+.btn-or { background: var(--or); color: var(--blanc); }
+.btn-or:hover { background: var(--or-clair); }
+.btn-full { width: 100%; }
+.btn-sm { padding: 6px 12px; font-size: 0.82rem; }
+
+.msg-error {
+  background: #fdecea; color: var(--rouge);
+  border: 1px solid #f5c6c2;
+  border-radius: 6px;
+  padding: 10px 14px;
+  font-size: 0.85rem;
+  margin-bottom: 14px;
+  display: none;
+}
+.msg-success {
+  background: #eafaf1; color: var(--vert);
+  border: 1px solid #a9dfbf;
+  border-radius: 6px;
+  padding: 10px 14px;
+  font-size: 0.85rem;
+  margin-bottom: 14px;
+  display: none;
+}
+
+/* ===== BARRE D'OUTILS TABLEAU ===== */
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 18px;
+}
+.toolbar input[type=text] {
+  max-width: 220px;
+  padding: 8px 12px;
+  font-size: 0.88rem;
+}
+.toolbar select {
+  max-width: 180px;
+  padding: 8px 12px;
+  font-size: 0.88rem;
+}
+.toolbar .spacer { flex: 1; }
+
+/* ===== TABLEAU ===== */
+.table-wrap {
+  background: var(--blanc);
+  border-radius: 10px;
+  box-shadow: var(--ombre);
+  overflow-x: auto;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+thead th {
+  background: var(--bleu);
+  color: var(--blanc);
+  padding: 12px 14px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 0.82rem;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+thead th:first-child { border-radius: 10px 0 0 0; }
+thead th:last-child { border-radius: 0 10px 0 0; }
+tbody tr {
+  border-bottom: 1px solid var(--gris);
+  transition: background 0.15s;
+}
+tbody tr:hover { background: #f0ede8; }
+tbody tr:last-child { border-bottom: none; }
+td { padding: 11px 14px; vertical-align: middle; }
+td a { color: var(--bleu-clair); text-decoration: none; }
+td a:hover { text-decoration: underline; }
+.td-nom {
+  font-weight: 600;
+  color: var(--bleu);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.td-nom:hover { color: var(--bleu-clair); text-decoration: underline; }
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+.badge-jeunesse { background: #dbeafe; color: #1e40af; }
+.badge-parentalite { background: #fce7f3; color: #9d174d; }
+.badge-coordinateur { background: #fef3c7; color: #92400e; }
+.badge-jp { background: #ede9fe; color: #5b21b6; }
+
+/* ===== FICHE ===== */
+.fiche-nav {
+  display: flex; align-items: center; gap: 12px;
+  margin-bottom: 20px;
+}
+.fiche-container {
+  background: var(--blanc);
+  border-radius: 12px;
+  box-shadow: var(--ombre);
+  overflow: hidden;
+}
+.fiche-header {
+  background: var(--bleu);
+  color: var(--blanc);
+  padding: 28px 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.fiche-header-left h2 {
+  font-family: 'Libre Baskerville', serif;
+  font-size: 1.6rem;
+  margin-bottom: 6px;
+}
+.fiche-header-left .badges { display: flex; gap: 8px; flex-wrap: wrap; }
+.fiche-header-right { display: flex; gap: 10px; flex-wrap: wrap; }
+.fiche-body { padding: 28px 32px; }
+.fiche-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+  margin-bottom: 24px;
+}
+.fiche-field {
+  background: var(--fond);
+  border-radius: 8px;
+  padding: 14px 16px;
+}
+.fiche-field-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--gris-texte);
+  margin-bottom: 4px;
+}
+.fiche-field-value {
+  font-size: 0.95rem;
+  color: var(--bleu);
+  word-break: break-word;
+}
+.fiche-field-value a { color: var(--bleu-clair); text-decoration: none; }
+.fiche-field-value a:hover { text-decoration: underline; }
+.fiche-dates {
+  border-top: 1px solid var(--gris);
+  padding-top: 16px;
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+.fiche-date-item { font-size: 0.8rem; color: var(--gris-texte); }
+.fiche-date-item strong { color: var(--bleu); }
+
+/* ===== MODAL ÉDITION ===== */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.45);
+  z-index: 200;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: var(--blanc);
+  border-radius: 12px;
+  width: 100%;
+  max-width: 680px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: var(--ombre-forte);
+}
+.modal-header {
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid var(--gris);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.modal-header h3 {
+  font-family: 'Libre Baskerville', serif;
+  font-size: 1.15rem;
+}
+.modal-close {
+  background: none; border: none;
+  cursor: pointer; font-size: 1.4rem;
+  color: var(--gris-texte);
+  line-height: 1;
+}
+.modal-body { padding: 20px 24px; }
+.modal-footer {
+  padding: 14px 24px 20px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  border-top: 1px solid var(--gris);
+}
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+/* ===== CARTE ===== */
+#map { height: 500px; border-radius: 10px; box-shadow: var(--ombre); }
+.carte-toolbar {
+  display: flex; gap: 10px; flex-wrap: wrap;
+  margin-bottom: 14px; align-items: center;
+}
+.carte-legende {
+  margin-top: 14px;
+  background: var(--blanc);
+  border-radius: 8px;
+  padding: 14px 18px;
+  box-shadow: var(--ombre);
+  font-size: 0.88rem;
+}
+#route-info {
+  background: var(--blanc);
+  border-radius: 8px;
+  padding: 14px 18px;
+  box-shadow: var(--ombre);
+  margin-top: 14px;
+  display: none;
+}
+
+/* ===== ADMIN ===== */
+.admin-section {
+  background: var(--blanc);
+  border-radius: 10px;
+  box-shadow: var(--ombre);
+  padding: 24px;
+  margin-bottom: 20px;
+}
+.admin-section h3 {
+  font-family: 'Libre Baskerville', serif;
+  font-size: 1.1rem;
+  margin-bottom: 18px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid var(--gris);
+  color: var(--bleu);
+}
+.invitation-list { display: flex; flex-direction: column; gap: 10px; }
+.invitation-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 14px;
+  background: var(--fond);
+  border-radius: 6px;
+  font-size: 0.88rem;
+  flex-wrap: wrap;
+}
+.invitation-code {
+  font-family: monospace;
+  font-size: 1rem;
+  background: var(--bleu);
+  color: var(--blanc);
+  padding: 3px 10px;
+  border-radius: 4px;
+  letter-spacing: 0.1em;
+}
+.invitation-used { opacity: 0.5; text-decoration: line-through; }
+.users-admin-list { display: flex; flex-direction: column; gap: 8px; }
+.user-admin-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 14px;
+  background: var(--fond);
+  border-radius: 6px;
+  font-size: 0.88rem;
+  flex-wrap: wrap;
+}
+.user-admin-item .nom { font-weight: 600; flex: 1; }
+
+/* ===== TOAST ===== */
+#toast {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+  background: var(--bleu);
+  color: var(--blanc);
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  box-shadow: var(--ombre-forte);
+  z-index: 999;
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+  white-space: nowrap;
+}
+#toast.show { opacity: 1; }
+
+/* ===== LOADER ===== */
+#loader {
+  position: fixed; inset: 0;
+  background: var(--fond);
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 16px;
+}
+.spinner {
+  width: 40px; height: 40px;
+  border: 3px solid var(--gris);
+  border-top-color: var(--bleu);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+#loader p { color: var(--gris-texte); font-size: 0.9rem; }
+
+/* ===== VÉRIFICATION ===== */
+.verif-banner {
+  background: linear-gradient(135deg, var(--bleu) 0%, var(--bleu-clair) 100%);
+  color: var(--blanc);
+  border-radius: 10px;
+  padding: 18px 24px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px;
+  box-shadow: var(--ombre);
+}
+.verif-banner p { font-size: 0.92rem; opacity: 0.9; }
+.verif-banner strong { font-size: 1rem; display: block; margin-bottom: 4px; }
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 600px) {
+  main { padding: 14px; }
+  .fiche-header { padding: 20px; }
+  .fiche-body { padding: 18px; }
+  .form-row { grid-template-columns: 1fr; }
+  .modal { max-height: 95vh; }
+  header h1 { font-size: 1rem; }
+}
+</style>
+</head>
+<body>
+
+<div id="loader">
+  <div class="spinner"></div>
+  <p>Chargement…</p>
+</div>
+
+<div id="toast"></div>
+
+<!-- EN-TÊTE -->
+<header>
+  <h1>Promeneurs du Net <span>32</span></h1>
+  <div id="user-info" style="display:none">
+    <span id="user-name"></span>
+    <button class="btn-logout" id="btn-logout" onclick="logout()">Déconnexion</button>
+  </div>
+</header>
+
+<!-- NAVIGATION -->
+<nav id="main-nav" style="display:none">
+  <button class="active" onclick="showTab('tableau')" id="tab-tableau">📋 Annuaire</button>
+  <button onclick="showTab('fiche')" id="tab-fiche" style="display:none">👤 Fiche</button>
+  <button onclick="showTab('carte')" id="tab-carte">🗺️ Carte</button>
+  <button onclick="showTab('ma-fiche')" id="tab-ma-fiche">✏️ Ma fiche</button>
+  <button onclick="showTab('admin')" id="tab-admin" style="display:none">⚙️ Admin</button>
+</nav>
+
+<!-- ===== ÉCRAN LOGIN ===== -->
+<div id="screen-login" class="screen active">
+  <div class="login-box">
+    <h2>Promeneurs du Net 32</h2>
+    <p>Annuaire des professionnels du département</p>
+    <div class="tabs-login">
+      <button class="tab-login active" onclick="switchLoginTab('connexion')">Connexion</button>
+      <button class="tab-login" onclick="switchLoginTab('inscription')">Créer mon compte</button>
+    </div>
+
+    <!-- Connexion -->
+    <div id="form-connexion">
+      <div id="err-connexion" class="msg-error"></div>
+      <div class="form-group">
+        <label>Adresse email</label>
+        <input type="email" id="login-email" placeholder="votre@email.fr">
+      </div>
+      <div class="form-group">
+        <label>Mot de passe</label>
+        <input type="password" id="login-pwd" placeholder="••••••••">
+      </div>
+      <button class="btn btn-primary btn-full" onclick="doLogin()">Se connecter</button>
+    </div>
+
+    <!-- Inscription -->
+    <div id="form-inscription" style="display:none">
+      <div id="err-inscription" class="msg-error"></div>
+      <div id="ok-inscription" class="msg-success"></div>
+      <div class="form-group">
+        <label>Code d'invitation</label>
+        <input type="text" id="reg-code" placeholder="Code reçu du coordinateur">
+      </div>
+      <div class="form-group">
+        <label>Adresse email</label>
+        <input type="email" id="reg-email" placeholder="votre@email.fr">
+      </div>
+      <div class="form-group">
+        <label>Mot de passe (6 caractères min.)</label>
+        <input type="password" id="reg-pwd" placeholder="••••••••">
+      </div>
+      <button class="btn btn-primary btn-full" onclick="doRegister()">Créer mon compte</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== ÉCRAN TABLEAU ===== -->
+<div id="screen-app" style="display:none">
+<main>
+
+<!-- TABLEAU -->
+<div id="screen-tableau" class="screen active">
+  <div class="toolbar">
+    <input type="text" id="filtre-nom" placeholder="🔍 Rechercher…" oninput="filtrerTableau()">
+    <select id="filtre-public" onchange="filtrerTableau()">
+      <option value="">Tous publics</option>
+      <option value="Jeunesse">Jeunesse</option>
+      <option value="Parentalité">Parentalité</option>
+      <option value="Jeunesse + Parentalité">Jeunesse + Parentalité</option>
+      <option value="Coordinateur">Coordinateur</option>
+    </select>
+    <select id="filtre-secteur" onchange="filtrerTableau()">
+      <option value="">Tous secteurs</option>
+    </select>
+    <select id="filtre-referent" onchange="filtrerTableau()">
+      <option value="">Tous référents</option>
+    </select>
+    <div class="spacer"></div>
+    <button class="btn btn-secondary btn-sm" onclick="exportPDF()">📄 Export PDF</button>
+  </div>
+  <div class="table-wrap">
+    <table id="main-table">
+      <thead>
+        <tr>
+          <th>Nom Prénom</th>
+          <th>Public</th>
+          <th>Secteur</th>
+          <th>Téléphone</th>
+          <th>Email</th>
+          <th>Réseau social</th>
+          <th>Référent CAF</th>
+          <th id="th-dates" style="display:none">Dernière vérif.</th>
+        </tr>
+      </thead>
+      <tbody id="table-body"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- FICHE -->
+<div id="screen-fiche" class="screen">
+  <div class="fiche-nav">
+    <button class="btn btn-secondary btn-sm" onclick="showTab('tableau')">← Retour</button>
+    <button class="btn btn-secondary btn-sm" onclick="ficheNav(-1)" id="btn-prev">◀ Précédent</button>
+    <button class="btn btn-secondary btn-sm" onclick="ficheNav(1)" id="btn-next">Suivant ▶</button>
+    <span id="fiche-counter" style="font-size:0.85rem;color:var(--gris-texte)"></span>
+  </div>
+  <div class="fiche-container" id="fiche-content"></div>
+</div>
+
+<!-- CARTE -->
+<div id="screen-carte" class="screen">
+  <div class="carte-toolbar">
+    <select id="carte-filtre-public" onchange="filtrerCarte()">
+      <option value="">Tous publics</option>
+      <option value="Jeunesse">Jeunesse</option>
+      <option value="Parentalité">Parentalité</option>
+      <option value="Jeunesse + Parentalité">Jeunesse + Parentalité</option>
+    </select>
+    <button class="btn btn-secondary btn-sm" onclick="resetRoute()">Effacer itinéraire</button>
+    <span style="font-size:0.82rem;color:var(--gris-texte)">Cliquez sur 2 marqueurs pour calculer un itinéraire covoiturage</span>
+  </div>
+  <div id="map"></div>
+  <div id="route-info"></div>
+</div>
+
+<!-- MA FICHE -->
+<div id="screen-ma-fiche" class="screen">
+  <div id="verif-banner" class="verif-banner" style="display:none">
+    <div>
+      <strong>✅ Vérification de votre fiche</strong>
+      <p>Confirmez que vos informations sont à jour en cliquant sur le bouton.</p>
+    </div>
+    <button class="btn btn-success" onclick="verifierFiche()">Ma fiche est à jour</button>
+  </div>
+  <div id="ma-fiche-content"></div>
+</div>
+
+<!-- ADMIN -->
+<div id="screen-admin" class="screen">
+  <!-- Invitations -->
+  <div class="admin-section">
+    <h3>🎟️ Codes d'invitation</h3>
+    <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+      <button class="btn btn-primary" onclick="genererCode()">Générer un nouveau code</button>
+    </div>
+    <div class="invitation-list" id="invitation-list"></div>
+  </div>
+
+  <!-- Utilisateurs -->
+  <div class="admin-section">
+    <h3>👥 Gestion des comptes</h3>
+    <div class="users-admin-list" id="users-admin-list"></div>
+  </div>
+
+  <!-- Nouvelle fiche -->
+  <div class="admin-section">
+    <h3>➕ Créer une fiche vide</h3>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+      <div class="form-group" style="margin:0;flex:1;min-width:200px">
+        <label>Nom Prénom</label>
+        <input type="text" id="new-fiche-nom" placeholder="ex: DUPONT Jean">
+      </div>
+      <button class="btn btn-primary" onclick="creerFicheVide()">Créer la fiche</button>
+    </div>
+  </div>
+
+  <!-- Transfert coordinateur -->
+  <div class="admin-section">
+    <h3>🔄 Transférer le rôle de coordinateur</h3>
+    <p style="font-size:0.88rem;color:var(--gris-texte);margin-bottom:14px">
+      Cette action vous retirera le rôle de coordinateur et l'attribuera à un autre promeneur.
+    </p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+      <div class="form-group" style="margin:0;flex:1;min-width:200px">
+        <label>Nouveau coordinateur</label>
+        <select id="transfert-select"></select>
+      </div>
+      <button class="btn btn-danger" onclick="transfertCoordinateur()">Transférer le rôle</button>
+    </div>
+  </div>
+</div>
+
+</main>
+</div>
+
+<!-- ===== MODAL ÉDITION FICHE ===== -->
+<div class="modal-overlay" id="modal-edit">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="modal-edit-title">Modifier la fiche</h3>
+      <button class="modal-close" onclick="closeModal('modal-edit')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="edit-id">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Nom Prénom</label>
+          <input type="text" id="edit-nom">
+        </div>
+        <div class="form-group">
+          <label>Public</label>
+          <select id="edit-public">
+            <option value="Jeunesse">Jeunesse</option>
+            <option value="Parentalité">Parentalité</option>
+            <option value="Jeunesse + Parentalité">Jeunesse + Parentalité</option>
+            <option value="Coordinateur">Coordinateur</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Secteur</label>
+          <input type="text" id="edit-secteur">
+        </div>
+        <div class="form-group">
+          <label>Référent CAF</label>
+          <input type="text" id="edit-referent">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Téléphone 1</label>
+          <input type="tel" id="edit-tel1" placeholder="ex: 06.12.34.56.78">
+        </div>
+        <div class="form-group">
+          <label>Téléphone 2</label>
+          <input type="tel" id="edit-tel2" placeholder="Optionnel">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Adresse postale</label>
+        <textarea id="edit-adresse" rows="2"></textarea>
+      </div>
+      <div class="form-group">
+        <label>Email professionnel</label>
+        <input type="email" id="edit-email">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Type réseau social</label>
+          <select id="edit-rs-type">
+            <option value="">— Aucun —</option>
+            <option value="Facebook">Facebook</option>
+            <option value="Instagram">Instagram</option>
+            <option value="LinkedIn">LinkedIn</option>
+            <option value="Autre">Autre</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Lien / identifiant réseau social</label>
+          <input type="text" id="edit-rs-lien" placeholder="URL ou nom du compte">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Lien site national</label>
+        <input type="text" id="edit-site" placeholder="https://…">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>GPS Latitude</label>
+          <input type="text" id="edit-lat" placeholder="ex: 43.6477">
+        </div>
+        <div class="form-group">
+          <label>GPS Longitude</label>
+          <input type="text" id="edit-lng" placeholder="ex: 0.5792">
+        </div>
+      </div>
+      <div id="err-edit" class="msg-error"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-edit')">Annuler</button>
+      <button class="btn btn-primary" onclick="sauvegarderFiche()">💾 Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- Firebase -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, addDoc, query, orderBy, serverTimestamp, Timestamp }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+// ===== CONFIG FIREBASE =====
+const firebaseConfig = {
+  apiKey: "AIzaSyDXLF-KHypMycJq_8DZga1suiPeluxaC8I",
+  authDomain: "contacts-pdn32.firebaseapp.com",
+  projectId: "contacts-pdn32",
+  storageBucket: "contacts-pdn32.firebasestorage.app",
+  messagingSenderId: "1071591668026",
+  appId: "1:1071591668026:web:22d3f7ab15fd5e17033803"
+};
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+// ===== CONFIG EMAILJS =====
+const EMAILJS_PUBLIC_KEY = "B36sTRsm02DxO9k60";
+const EMAILJS_SERVICE_ID = "service_twe8h8j";
+const EMAILJS_TEMPLATE_ID = "template_ehov6qh";
+const COORD_EMAIL = "sebastien.dumortier@reseau-canope.fr";
+
+// ===== ÉTAT GLOBAL =====
+let currentUser = null;
+let currentUserData = null;
+let allPromeneurs = [];
+let ficheIndex = 0;
+let ficheList = [];
+let mapInstance = null;
+let mapMarkers = [];
+let routeLayer = null;
+let routePoints = [];
+let isCoordinateur = false;
+
+// ===== UTILITAIRES =====
+function toast(msg, duree = 3000) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), duree);
+}
+
+function showErr(id, msg) {
+  const el = document.getElementById(id);
+  el.textContent = msg; el.style.display = 'block';
+}
+function hideErr(id) {
+  const el = document.getElementById(id);
+  el.style.display = 'none';
+}
+function showOk(id, msg) {
+  const el = document.getElementById(id);
+  el.textContent = msg; el.style.display = 'block';
+}
+
+function loader(show) {
+  document.getElementById('loader').style.display = show ? 'flex' : 'none';
+}
+
+function formatDate(ts) {
+  if (!ts) return '—';
+  const d = ts.toDate ? ts.toDate() : new Date(ts);
+  return d.toLocaleDateString('fr-FR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+}
+
+function telLink(tel) {
+  if (!tel) return '';
+  const clean = tel.replace(/[\s.]/g, '');
+  return `<a href="tel:${clean}">${tel}</a>`;
+}
+
+function badgePublic(pub) {
+  const map = {
+    'Jeunesse': 'badge-jeunesse',
+    'Parentalité': 'badge-parentalite',
+    'Jeunesse + Parentalité': 'badge-jp',
+    'Coordinateur': 'badge-coordinateur'
+  };
+  return `<span class="badge ${map[pub] || ''}">${pub || '—'}</span>`;
+}
+
+// ===== AUTH =====
+window.switchLoginTab = function(tab) {
+  document.getElementById('form-connexion').style.display = tab === 'connexion' ? 'block' : 'none';
+  document.getElementById('form-inscription').style.display = tab === 'inscription' ? 'block' : 'none';
+  document.querySelectorAll('.tab-login').forEach((b, i) => {
+    b.classList.toggle('active', (i === 0 && tab === 'connexion') || (i === 1 && tab === 'inscription'));
+  });
+};
+
+window.doLogin = async function() {
+  hideErr('err-connexion');
+  const email = document.getElementById('login-email').value.trim();
+  const pwd = document.getElementById('login-pwd').value;
+  if (!email || !pwd) { showErr('err-connexion', 'Veuillez remplir tous les champs.'); return; }
+  try {
+    await signInWithEmailAndPassword(auth, email, pwd);
+  } catch(e) {
+    showErr('err-connexion', 'Email ou mot de passe incorrect.');
+  }
+};
+
+window.doRegister = async function() {
+  hideErr('err-inscription');
+  hideErr('ok-inscription');
+  const code = document.getElementById('reg-code').value.trim().toUpperCase();
+  const email = document.getElementById('reg-email').value.trim();
+  const pwd = document.getElementById('reg-pwd').value;
+  if (!code || !email || !pwd) { showErr('err-inscription', 'Veuillez remplir tous les champs.'); return; }
+  if (pwd.length < 6) { showErr('err-inscription', 'Le mot de passe doit faire au moins 6 caractères.'); return; }
+
+  // Vérifier le code
+  const codeRef = doc(db, 'invitations', code);
+  const codeSnap = await getDoc(codeRef);
+  if (!codeSnap.exists() || codeSnap.data().used) {
+    showErr('err-inscription', 'Code d\'invitation invalide ou déjà utilisé.');
+    return;
+  }
+
+  try {
+    const cred = await createUserWithEmailAndPassword(auth, email, pwd);
+    // Marquer le code comme utilisé
+    await updateDoc(codeRef, { used: true, usedBy: email, usedAt: serverTimestamp() });
+    // Créer une fiche vide liée à l'uid
+    const ficheId = codeSnap.data().ficheId || null;
+    if (ficheId) {
+      await updateDoc(doc(db, 'promeneurs', ficheId), { uid: cred.user.uid, email: email });
+    }
+    showOk('ok-inscription', 'Compte créé ! Vous allez être connecté…');
+  } catch(e) {
+    if (e.code === 'auth/email-already-in-use') showErr('err-inscription', 'Cet email est déjà utilisé.');
+    else showErr('err-inscription', 'Erreur lors de la création du compte.');
+  }
+};
+
+window.logout = async function() {
+  await signOut(auth);
+};
+
+// ===== ÉTAT AUTH =====
+onAuthStateChanged(auth, async (user) => {
+  loader(true);
+  if (user) {
+    currentUser = user;
+    // Chercher la fiche du promeneur par uid
+    const q = query(collection(db, 'promeneurs'), orderBy('nom'));
+    const snap = await getDocs(q);
+    allPromeneurs = [];
+    snap.forEach(d => allPromeneurs.push({ id: d.id, ...d.data() }));
+    currentUserData = allPromeneurs.find(p => p.uid === user.uid) || null;
+    isCoordinateur = currentUserData?.public === 'Coordinateur';
+
+    document.getElementById('screen-login').style.display = 'none';
+    document.getElementById('screen-app').style.display = 'block';
+    document.getElementById('main-nav').style.display = 'flex';
+    document.getElementById('user-info').style.display = 'flex';
+    document.getElementById('user-name').textContent = currentUserData?.nom || user.email;
+
+    if (isCoordinateur) {
+      document.getElementById('tab-admin').style.display = 'inline-block';
+      document.getElementById('th-dates').style.display = '';
+    }
+
+    populateFiltres();
+    renderTableau();
+    loader(false);
+  } else {
+    currentUser = null; currentUserData = null;
+    document.getElementById('screen-login').style.display = 'flex';
+    document.getElementById('screen-app').style.display = 'none';
+    document.getElementById('main-nav').style.display = 'none';
+    document.getElementById('user-info').style.display = 'none';
+    loader(false);
+  }
+});
+
+// ===== NAVIGATION ONGLETS =====
+window.showTab = function(tab) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById('screen-' + tab).classList.add('active');
+  document.getElementById('tab-' + tab).classList.add('active');
+  if (tab === 'fiche') document.getElementById('tab-fiche').style.display = 'inline-block';
+  if (tab === 'carte') initCarte();
+  if (tab === 'ma-fiche') renderMaFiche();
+  if (tab === 'admin') renderAdmin();
+};
+
+// ===== TABLEAU =====
+function populateFiltres() {
+  const secteurs = [...new Set(allPromeneurs.map(p => p.secteur).filter(Boolean))].sort();
+  const sel = document.getElementById('filtre-secteur');
+  sel.innerHTML = '<option value="">Tous secteurs</option>';
+  secteurs.forEach(s => sel.innerHTML += `<option value="${s}">${s}</option>`);
+
+  const referents = [...new Set(allPromeneurs.map(p => p.referent).filter(Boolean))].sort();
+  const sel2 = document.getElementById('filtre-referent');
+  sel2.innerHTML = '<option value="">Tous référents</option>';
+  referents.forEach(r => sel2.innerHTML += `<option value="${r}">${r}</option>`);
+}
+
+function getFiltered() {
+  const nom = document.getElementById('filtre-nom').value.toLowerCase();
+  const pub = document.getElementById('filtre-public').value;
+  const sect = document.getElementById('filtre-secteur').value;
+  const ref = document.getElementById('filtre-referent').value;
+  return allPromeneurs.filter(p => {
+    if (nom && !p.nom?.toLowerCase().includes(nom) &&
+        !p.email?.toLowerCase().includes(nom) &&
+        !p.secteur?.toLowerCase().includes(nom)) return false;
+    if (pub && p.public !== pub) return false;
+    if (sect && p.secteur !== sect) return false;
+    if (ref && p.referent !== ref) return false;
+    return true;
+  });
+}
+
+function renderTableau() {
+  ficheList = getFiltered();
+  const tbody = document.getElementById('table-body');
+  tbody.innerHTML = '';
+  ficheList.forEach((p, i) => {
+    const tr = document.createElement('tr');
+    const tels = [p.tel1, p.tel2].filter(Boolean).map(telLink).join('<br>');
+    const rs = p.rsType && p.rsLien
+      ? `<a href="${p.rsLien.startsWith('http') ? p.rsLien : 'https://' + p.rsLien}" target="_blank">${p.rsType}</a>`
+      : (p.rsLien || '—');
+    const email = p.email ? `<a href="mailto:${p.email}">${p.email}</a>` : '—';
+    let html = `
+      <td class="td-nom" onclick="ouvrirFiche(${i})">${p.nom || '—'}</td>
+      <td>${badgePublic(p.public)}</td>
+      <td>${p.secteur || '—'}</td>
+      <td>${tels || '—'}</td>
+      <td>${email}</td>
+      <td>${rs}</td>
+      <td>${p.referent || '—'}</td>
+    `;
+    if (isCoordinateur) {
+      html += `<td style="font-size:0.78rem;color:var(--gris-texte)">${formatDate(p.dateVerif)}</td>`;
+    }
+    tr.innerHTML = html;
+    tbody.appendChild(tr);
+  });
+}
+
+window.filtrerTableau = function() { renderTableau(); };
+
+// ===== FICHE =====
+window.ouvrirFiche = function(index) {
+  ficheIndex = index;
+  renderFiche();
+  showTab('fiche');
+};
+
+window.ficheNav = function(dir) {
+  ficheIndex = Math.max(0, Math.min(ficheList.length - 1, ficheIndex + dir));
+  renderFiche();
+};
+
+function renderFiche() {
+  const p = ficheList[ficheIndex];
+  if (!p) return;
+  const canEdit = isCoordinateur || (currentUserData && currentUserData.id === p.id);
+  document.getElementById('fiche-counter').textContent = `${ficheIndex + 1} / ${ficheList.length}`;
+  document.getElementById('btn-prev').disabled = ficheIndex === 0;
+  document.getElementById('btn-next').disabled = ficheIndex === ficheList.length - 1;
+
+  const tels = [p.tel1, p.tel2].filter(Boolean);
+  const rs = p.rsType && p.rsLien
+    ? `<a href="${p.rsLien.startsWith('http') ? p.rsLien : 'https://' + p.rsLien}" target="_blank">${p.rsType} — ${p.rsLien}</a>`
+    : (p.rsLien || '—');
+  const site = p.site ? `<a href="${p.site}" target="_blank">${p.site}</a>` : '—';
+  const emailLink = p.email ? `<a href="mailto:${p.email}">${p.email}</a>` : '—';
+
+  let datesHtml = '';
+  if (isCoordinateur) {
+    datesHtml = `
+      <div class="fiche-dates">
+        <div class="fiche-date-item">🕐 <strong>Dernière modification :</strong> ${formatDate(p.dateMaj)}</div>
+        <div class="fiche-date-item">✅ <strong>Dernière vérification :</strong> ${formatDate(p.dateVerif)}</div>
+      </div>`;
+  }
+
+  document.getElementById('fiche-content').innerHTML = `
+    <div class="fiche-header">
+      <div class="fiche-header-left">
+        <h2>${p.nom || '—'}</h2>
+        <div class="badges">${badgePublic(p.public)}${p.secteur ? `<span class="badge" style="background:#f0ede8;color:var(--bleu)">${p.secteur}</span>` : ''}</div>
+      </div>
+      <div class="fiche-header-right">
+        ${canEdit ? `<button class="btn btn-or btn-sm" onclick="ouvrirEdit('${p.id}')">✏️ Modifier</button>` : ''}
+        ${isCoordinateur ? `<button class="btn btn-danger btn-sm" onclick="desactiverCompte('${p.id}', '${p.uid || ''}')">🚫 Désactiver</button>` : ''}
+      </div>
+    </div>
+    <div class="fiche-body">
+      <div class="fiche-grid">
+        <div class="fiche-field">
+          <div class="fiche-field-label">Téléphone(s)</div>
+          <div class="fiche-field-value">${tels.map(t => telLink(t)).join('<br>') || '—'}</div>
+        </div>
+        <div class="fiche-field">
+          <div class="fiche-field-label">Email professionnel</div>
+          <div class="fiche-field-value">${emailLink}</div>
+        </div>
+        <div class="fiche-field">
+          <div class="fiche-field-label">Adresse postale</div>
+          <div class="fiche-field-value">${p.adresse || '—'}</div>
+        </div>
+        <div class="fiche-field">
+          <div class="fiche-field-label">Réseau social</div>
+          <div class="fiche-field-value">${rs}</div>
+        </div>
+        <div class="fiche-field">
+          <div class="fiche-field-label">Site national</div>
+          <div class="fiche-field-value">${site}</div>
+        </div>
+        <div class="fiche-field">
+          <div class="fiche-field-label">Référent CAF</div>
+          <div class="fiche-field-value">${p.referent || '—'}</div>
+        </div>
+        ${p.lat && p.lng ? `
+        <div class="fiche-field">
+          <div class="fiche-field-label">Coordonnées GPS</div>
+          <div class="fiche-field-value">${p.lat}, ${p.lng}</div>
+        </div>` : ''}
+      </div>
+      ${datesHtml}
+    </div>`;
+}
+
+// ===== ÉDITION =====
+window.ouvrirEdit = function(id) {
+  const p = allPromeneurs.find(x => x.id === id);
+  if (!p) return;
+  document.getElementById('edit-id').value = id;
+  document.getElementById('edit-nom').value = p.nom || '';
+  document.getElementById('edit-public').value = p.public || 'Jeunesse';
+  // Protéger le champ public du coordinateur connecté
+  document.getElementById('edit-public').disabled = (p.id === currentUserData?.id && isCoordinateur);
+  document.getElementById('edit-secteur').value = p.secteur || '';
+  document.getElementById('edit-referent').value = p.referent || '';
+  document.getElementById('edit-tel1').value = p.tel1 || '';
+  document.getElementById('edit-tel2').value = p.tel2 || '';
+  document.getElementById('edit-adresse').value = p.adresse || '';
+  document.getElementById('edit-email').value = p.email || '';
+  document.getElementById('edit-rs-type').value = p.rsType || '';
+  document.getElementById('edit-rs-lien').value = p.rsLien || '';
+  document.getElementById('edit-site').value = p.site || '';
+  document.getElementById('edit-lat').value = p.lat || '';
+  document.getElementById('edit-lng').value = p.lng || '';
+  hideErr('err-edit');
+  document.getElementById('modal-edit-title').textContent = `Modifier — ${p.nom || 'Fiche'}`;
+  document.getElementById('modal-edit').classList.add('open');
+};
+
+window.closeModal = function(id) {
+  document.getElementById(id).classList.remove('open');
+};
+
+window.sauvegarderFiche = async function() {
+  const id = document.getElementById('edit-id').value;
+  const p = allPromeneurs.find(x => x.id === id);
+  if (!p) return;
+
+  const nouveau = {
+    nom: document.getElementById('edit-nom').value.trim(),
+    public: document.getElementById('edit-public').disabled ? p.public : document.getElementById('edit-public').value,
+    secteur: document.getElementById('edit-secteur').value.trim(),
+    referent: document.getElementById('edit-referent').value.trim(),
+    tel1: document.getElementById('edit-tel1').value.trim(),
+    tel2: document.getElementById('edit-tel2').value.trim(),
+    adresse: document.getElementById('edit-adresse').value.trim(),
+    email: document.getElementById('edit-email').value.trim(),
+    rsType: document.getElementById('edit-rs-type').value,
+    rsLien: document.getElementById('edit-rs-lien').value.trim(),
+    site: document.getElementById('edit-site').value.trim(),
+    lat: document.getElementById('edit-lat').value.trim(),
+    lng: document.getElementById('edit-lng').value.trim(),
+    dateMaj: serverTimestamp()
+  };
+
+  // Calculer le diff
+  const champs = {
+    nom: 'Nom Prénom', public: 'Public', secteur: 'Secteur', referent: 'Référent CAF',
+    tel1: 'Téléphone 1', tel2: 'Téléphone 2', adresse: 'Adresse',
+    email: 'Email', rsType: 'Type réseau social', rsLien: 'Réseau social',
+    site: 'Site national', lat: 'GPS Latitude', lng: 'GPS Longitude'
+  };
+  let diff = '';
+  Object.entries(champs).forEach(([k, label]) => {
+    const avant = p[k] || '';
+    const apres = nouveau[k] || '';
+    if (avant !== apres) {
+      diff += `• ${label} : "${avant}" → "${apres}"\n`;
+    }
+  });
+
+  try {
+    await updateDoc(doc(db, 'promeneurs', id), nouveau);
+    // Mettre à jour local
+    const idx = allPromeneurs.findIndex(x => x.id === id);
+    allPromeneurs[idx] = { ...p, ...nouveau };
+    ficheList = getFiltered();
+
+    // Envoyer email si des champs ont changé
+    if (diff) {
+      await envoyerEmailDiff(p.nom || 'Inconnu', diff);
+    }
+
+    closeModal('modal-edit');
+    toast('✅ Fiche enregistrée !');
+    renderTableau();
+    if (document.getElementById('screen-fiche').classList.contains('active')) renderFiche();
+    if (document.getElementById('screen-ma-fiche').classList.contains('active')) renderMaFiche();
+  } catch(e) {
+    showErr('err-edit', 'Erreur lors de l\'enregistrement : ' + e.message);
+  }
+};
+
+async function envoyerEmailDiff(promeneur, modifications) {
+  const now = new Date().toLocaleString('fr-FR');
+  try {
+    await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
+      to_email: COORD_EMAIL,
+      promeneur: promeneur,
+      date: now,
+      modifications: modifications
+    }, EMAILJS_PUBLIC_KEY);
+  } catch(e) {
+    console.warn('EmailJS error:', e);
+  }
+}
+
+// ===== MA FICHE =====
+function renderMaFiche() {
+  if (!currentUserData) {
+    document.getElementById('ma-fiche-content').innerHTML = '<p style="color:var(--gris-texte)">Aucune fiche associée à votre compte.</p>';
+    document.getElementById('verif-banner').style.display = 'none';
+    return;
+  }
+  document.getElementById('verif-banner').style.display = 'flex';
+  // Afficher la fiche en mode lecture avec bouton édition
+  const p = currentUserData;
+  const idx = allPromeneurs.findIndex(x => x.id === p.id);
+  ficheList = allPromeneurs;
+  ficheIndex = idx >= 0 ? idx : 0;
+
+  const tels = [p.tel1, p.tel2].filter(Boolean);
+  const rs = p.rsType && p.rsLien
+    ? `<a href="${p.rsLien.startsWith('http') ? p.rsLien : 'https://' + p.rsLien}" target="_blank">${p.rsType} — ${p.rsLien}</a>`
+    : (p.rsLien || '—');
+
+  document.getElementById('ma-fiche-content').innerHTML = `
+    <div class="fiche-container">
+      <div class="fiche-header">
+        <div class="fiche-header-left">
+          <h2>${p.nom || '—'}</h2>
+          <div class="badges">${badgePublic(p.public)}</div>
+        </div>
+        <div class="fiche-header-right">
+          <button class="btn btn-or btn-sm" onclick="ouvrirEdit('${p.id}')">✏️ Modifier mes infos</button>
+        </div>
+      </div>
+      <div class="fiche-body">
+        <div class="fiche-grid">
+          <div class="fiche-field"><div class="fiche-field-label">Téléphone(s)</div><div class="fiche-field-value">${tels.map(telLink).join('<br>') || '—'}</div></div>
+          <div class="fiche-field"><div class="fiche-field-label">Email professionnel</div><div class="fiche-field-value">${p.email ? `<a href="mailto:${p.email}">${p.email}</a>` : '—'}</div></div>
+          <div class="fiche-field"><div class="fiche-field-label">Adresse postale</div><div class="fiche-field-value">${p.adresse || '—'}</div></div>
+          <div class="fiche-field"><div class="fiche-field-label">Réseau social</div><div class="fiche-field-value">${rs}</div></div>
+          <div class="fiche-field"><div class="fiche-field-label">Secteur</div><div class="fiche-field-value">${p.secteur || '—'}</div></div>
+          <div class="fiche-field"><div class="fiche-field-label">Référent CAF</div><div class="fiche-field-value">${p.referent || '—'}</div></div>
+        </div>
+      </div>
+    </div>`;
+}
+
+window.verifierFiche = async function() {
+  if (!currentUserData) return;
+  await updateDoc(doc(db, 'promeneurs', currentUserData.id), {
+    dateVerif: serverTimestamp()
+  });
+  currentUserData.dateVerif = { toDate: () => new Date() };
+  toast('✅ Vérification enregistrée !');
+};
+
+// ===== CARTE =====
+function initCarte() {
+  if (mapInstance) { mapInstance.invalidateSize(); updateMarkers(); return; }
+  mapInstance = L.map('map').setView([43.65, 0.58], 9);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap contributors'
+  }).addTo(mapInstance);
+  updateMarkers();
+}
+
+function updateMarkers() {
+  mapMarkers.forEach(m => mapInstance.removeLayer(m));
+  mapMarkers = [];
+  const pub = document.getElementById('carte-filtre-public').value;
+  allPromeneurs.filter(p => p.lat && p.lng && (!pub || p.public === pub || p.public === 'Jeunesse + Parentalité'))
+    .forEach(p => {
+      const marker = L.marker([parseFloat(p.lat), parseFloat(p.lng)]);
+      marker.bindPopup(`<strong>${p.nom}</strong><br>${badgePublic(p.public)}<br>${p.secteur || ''}`);
+      marker.on('click', () => selectionnerPointRoute(p, marker));
+      marker.addTo(mapInstance);
+      mapMarkers.push(marker);
+    });
+}
+
+window.filtrerCarte = function() { updateMarkers(); };
+
+function selectionnerPointRoute(p, marker) {
+  if (!p.lat || !p.lng) return;
+  routePoints.push({ nom: p.nom, lat: parseFloat(p.lat), lng: parseFloat(p.lng) });
+  if (routePoints.length === 2) calculerItineraire();
+  else if (routePoints.length > 2) { routePoints = [routePoints[routePoints.length - 1]]; }
+}
+
+async function calculerItineraire() {
+  const [a, b] = routePoints;
+  const url = `https://router.project-osrm.org/route/v1/driving/${a.lng},${a.lat};${b.lng},${b.lat}?overview=full&geometries=geojson`;
+  try {
+    const res = await fetch(url);
+    const data = await res.json();
+    if (data.routes && data.routes[0]) {
+      const route = data.routes[0];
+      const km = (route.distance / 1000).toFixed(1);
+      const min = Math.round(route.duration / 60);
+      const h = Math.floor(min / 60);
+      const m = min % 60;
+      const duree = h > 0 ? `${h}h${m.toString().padStart(2,'0')}` : `${m} min`;
+
+      if (routeLayer) mapInstance.removeLayer(routeLayer);
+      routeLayer = L.geoJSON(route.geometry, { style: { color: '#2d6a9f', weight: 4 } }).addTo(mapInstance);
+      mapInstance.fitBounds(routeLayer.getBounds(), { padding: [30, 30] });
+
+      document.getElementById('route-info').style.display = 'block';
+      document.getElementById('route-info').innerHTML = `
+        <strong>🚗 Itinéraire covoiturage</strong><br>
+        De <em>${a.nom}</em> à <em>${b.nom}</em><br>
+        Distance : <strong>${km} km</strong> — Durée estimée : <strong>${duree}</strong>
+      `;
+      routePoints = [];
+    }
+  } catch(e) { toast('Erreur lors du calcul de l\'itinéraire'); routePoints = []; }
+}
+
+window.resetRoute = function() {
+  if (routeLayer) { mapInstance.removeLayer(routeLayer); routeLayer = null; }
+  routePoints = [];
+  document.getElementById('route-info').style.display = 'none';
+};
+
+// ===== ADMIN =====
+async function renderAdmin() {
+  await renderInvitations();
+  await renderUsersAdmin();
+  // Remplir select transfert
+  const sel = document.getElementById('transfert-select');
+  sel.innerHTML = '';
+  allPromeneurs.filter(p => p.public !== 'Coordinateur').forEach(p => {
+    sel.innerHTML += `<option value="${p.id}">${p.nom}</option>`;
+  });
+}
+
+async function renderInvitations() {
+  const snap = await getDocs(collection(db, 'invitations'));
+  const list = document.getElementById('invitation-list');
+  list.innerHTML = '';
+  const invites = [];
+  snap.forEach(d => invites.push({ id: d.id, ...d.data() }));
+  invites.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+  invites.forEach(inv => {
+    const div = document.createElement('div');
+    div.className = 'invitation-item' + (inv.used ? ' invitation-used' : '');
+    div.innerHTML = `
+      <span class="invitation-code">${inv.id}</span>
+      <span>${inv.used ? '✅ Utilisé par ' + (inv.usedBy || '?') : '⏳ En attente'}</span>
+      <span style="color:var(--gris-texte);font-size:0.78rem">${formatDate(inv.createdAt)}</span>
+      ${!inv.used ? `<button class="btn btn-danger btn-sm" onclick="supprimerCode('${inv.id}')">Supprimer</button>` : ''}
+    `;
+    list.appendChild(div);
+  });
+}
+
+async function renderUsersAdmin() {
+  const list = document.getElementById('users-admin-list');
+  list.innerHTML = '';
+  allPromeneurs.forEach(p => {
+    const div = document.createElement('div');
+    div.className = 'user-admin-item';
+    div.innerHTML = `
+      <span class="nom">${p.nom || '—'}</span>
+      ${badgePublic(p.public)}
+      <span style="color:var(--gris-texte);font-size:0.8rem">${p.email || 'pas de compte'}</span>
+      <div style="margin-left:auto;display:flex;gap:8px">
+        <button class="btn btn-secondary btn-sm" onclick="ouvrirEdit('${p.id}')">✏️ Éditer</button>
+        ${p.uid ? `<button class="btn btn-danger btn-sm" onclick="desactiverCompte('${p.id}', '${p.uid}')">🚫 Désactiver</button>` : ''}
+        <button class="btn btn-danger btn-sm" onclick="supprimerFiche('${p.id}')">🗑️ Supprimer</button>
+      </div>
+    `;
+    list.appendChild(div);
+  });
+}
+
+window.genererCode = async function() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = 'PdN-';
+  for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
+  await setDoc(doc(db, 'invitations', code), {
+    used: false,
+    createdAt: serverTimestamp(),
+    createdBy: currentUser.uid
+  });
+  toast(`Code généré : ${code}`);
+  renderAdmin();
+};
+
+window.supprimerCode = async function(id) {
+  if (!confirm(`Supprimer le code ${id} ?`)) return;
+  await deleteDoc(doc(db, 'invitations', id));
+  toast('Code supprimé');
+  renderAdmin();
+};
+
+window.creerFicheVide = async function() {
+  const nom = document.getElementById('new-fiche-nom').value.trim();
+  if (!nom) { toast('Veuillez saisir un nom'); return; }
+  const ref = await addDoc(collection(db, 'promeneurs'), {
+    nom, public: 'Jeunesse', secteur: '', referent: '',
+    tel1: '', tel2: '', adresse: '', email: '', rsType: '', rsLien: '',
+    site: '', lat: '', lng: '', dateMaj: serverTimestamp()
+  });
+  allPromeneurs.push({ id: ref.id, nom, public: 'Jeunesse' });
+  document.getElementById('new-fiche-nom').value = '';
+  toast(`Fiche "${nom}" créée`);
+  renderTableau();
+  renderAdmin();
+};
+
+window.supprimerFiche = async function(id) {
+  const p = allPromeneurs.find(x => x.id === id);
+  if (!confirm(`Supprimer définitivement la fiche de ${p?.nom || 'ce promeneur'} ?`)) return;
+  await deleteDoc(doc(db, 'promeneurs', id));
+  allPromeneurs = allPromeneurs.filter(x => x.id !== id);
+  toast('Fiche supprimée');
+  renderTableau();
+  renderAdmin();
+};
+
+window.desactiverCompte = async function(ficheId, uid) {
+  const p = allPromeneurs.find(x => x.id === ficheId);
+  if (!confirm(`Désactiver le compte de ${p?.nom || 'ce promeneur'} ? Il ne pourra plus se connecter.`)) return;
+  // On ne peut pas désactiver Firebase Auth depuis le client — on marque dans Firestore
+  await updateDoc(doc(db, 'promeneurs', ficheId), { desactive: true, uid: null });
+  const idx = allPromeneurs.findIndex(x => x.id === ficheId);
+  if (idx >= 0) allPromeneurs[idx].desactive = true;
+  toast(`Compte de ${p?.nom} marqué désactivé. Supprimez aussi le compte dans la console Firebase Auth.`);
+  renderAdmin();
+};
+
+window.transfertCoordinateur = async function() {
+  const sel = document.getElementById('transfert-select');
+  const newId = sel.value;
+  if (!newId) return;
+  const nouveau = allPromeneurs.find(p => p.id === newId);
+  if (!confirm(`Transférer le rôle de coordinateur à ${nouveau?.nom} ? Vous perdrez vos droits admin.`)) return;
+  await updateDoc(doc(db, 'promeneurs', newId), { public: 'Coordinateur' });
+  await updateDoc(doc(db, 'promeneurs', currentUserData.id), { public: 'Jeunesse' });
+  toast('Rôle transféré. Rechargement…');
+  setTimeout(() => location.reload(), 1500);
+};
+
+// ===== EXPORT PDF =====
+window.exportPDF = function() {
+  const filtered = getFiltered();
+  let html = `
+    <html><head><meta charset="UTF-8">
+    <style>
+      body { font-family: Arial, sans-serif; font-size: 11px; }
+      h1 { font-size: 16px; margin-bottom: 16px; }
+      table { width: 100%; border-collapse: collapse; }
+      th { background: #1a3a5c; color: white; padding: 6px 8px; text-align: left; font-size: 10px; }
+      td { padding: 5px 8px; border-bottom: 1px solid #eee; vertical-align: top; }
+      tr:nth-child(even) td { background: #f8f6f3; }
+    </style></head><body>
+    <h1>Annuaire — Promeneurs du Net 32</h1>
+    <table><thead><tr>
+      <th>Nom Prénom</th><th>Public</th><th>Secteur</th>
+      <th>Téléphone(s)</th><th>Email</th><th>Réseau social</th><th>Référent CAF</th>
+      ${isCoordinateur ? '<th>Dernière vérif.</th>' : ''}
+    </tr></thead><tbody>`;
+  filtered.forEach(p => {
+    const tels = [p.tel1, p.tel2].filter(Boolean).join(' / ');
+    const rs = p.rsType && p.rsLien ? `${p.rsType}: ${p.rsLien}` : (p.rsLien || '');
+    html += `<tr>
+      <td>${p.nom || ''}</td>
+      <td>${p.public || ''}</td>
+      <td>${p.secteur || ''}</td>
+      <td>${tels}</td>
+      <td>${p.email || ''}</td>
+      <td>${rs}</td>
+      <td>${p.referent || ''}</td>
+      ${isCoordinateur ? `<td>${formatDate(p.dateVerif)}</td>` : ''}
+    </tr>`;
+  });
+  html += '</tbody></table></body></html>';
+  const w = window.open('', '_blank');
+  w.document.write(html);
+  w.document.close();
+  w.print();
+};
+
+</script>
+
+<!-- EmailJS -->
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+<script>emailjs.init("B36sTRsm02DxO9k60");</script>
+
+<!-- Leaflet -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+</body>
+</html>
