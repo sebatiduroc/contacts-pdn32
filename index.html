@@ -1024,10 +1024,11 @@ function getFiltered() {
 }
 
 function renderTableau() {
-  ficheList = getFiltered();
+  const filtered = getFiltered();
+  ficheList = filtered; // capturer immédiatement
   const tbody = document.getElementById('table-body');
   tbody.innerHTML = '';
-  ficheList.forEach((p, i) => {
+  filtered.forEach((p, i) => {
     const tr = document.createElement('tr');
     const tels = [p.tel1, p.tel2].filter(Boolean).map(telLink).join('<br>');
     const rs = rsLink(p.rsLien);
@@ -1053,6 +1054,7 @@ window.filtrerTableau = function() { renderTableau(); };
 
 // ===== FICHE =====
 window.ouvrirFiche = function(index) {
+  // Capturer la liste filtrée courante avant de changer d'écran
   ficheList = getFiltered();
   ficheIndex = index;
   document.getElementById('tab-fiche').style.display = 'inline-block';
@@ -1073,8 +1075,8 @@ function renderFiche() {
   if (!p) return;
   const canEdit = isCoordinateur || (currentUserData && currentUserData.id === p.id);
   document.getElementById('fiche-counter').textContent = `${ficheIndex + 1} / ${ficheList.length}`;
-  document.getElementById('btn-prev').disabled = ficheIndex === 0;
-  document.getElementById('btn-next').disabled = ficheIndex === ficheList.length - 1;
+  document.getElementById('btn-prev').style.visibility = ficheIndex === 0 ? 'hidden' : 'visible';
+  document.getElementById('btn-next').style.visibility = ficheIndex === ficheList.length - 1 ? 'hidden' : 'visible';
 
   const tels = [p.tel1, p.tel2].filter(Boolean);
   const rs = rsLink(p.rsLien);
