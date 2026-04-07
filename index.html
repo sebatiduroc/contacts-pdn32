@@ -1601,39 +1601,24 @@ async function initCarte() {
     console.warn('Contour Gers:', e);
   }
 
-  // 2. Intercommunalités du Gers via Overpass (EPCI = admin_level 7 en France)
+  // 2. Intercommunalités du Gers via geo.api.gouv.fr (API officielle France)
   try {
-    // Requête Overpass correcte : convertir la relation département en area via map_to_area
-    // puis chercher les relations admin_level=7 (EPCI) à l'intérieur
-    const overpassQuery = `
-[out:json][timeout:90];
-// Département du Gers via code INSEE 32
-rel["ref:INSEE"="32"]["admin_level"="6"]->.dept;
-map_to_area .dept -> .deptArea;
-// Intercommunalités EPCI (admin_level 7 en France)
-rel(area.deptArea)["boundary"="administrative"]["admin_level"="7"];
-out geom;
-`;
-    const ovResp = await fetch('https://overpass-api.de/api/interpreter', {
-      method: 'POST',
-      body: 'data=' + encodeURIComponent(overpassQuery)
-    });
-    const ovData = await ovResp.json();
+    // Récupérer la liste des EPCI du département 32
+    const epciResp = await fetch('https://geo.api.gouv.fr/epcis?codeDepartement=32&fields=nom,code,contour&format=json&geometry=contour');
+    const epciData = await epciResp.json();
 
-    if (ovData && ovData.elements && ovData.elements.length > 0) {
-      const geojson = overpassToGeoJSON(ovData);
-
-      // Couleurs alternées pour distinguer les EPCI
+    if (epciData && epciData.length > 0) {
       const palette = ['#2d6a9f','#c8973a','#27ae60','#8e44ad','#c0392b','#16a085','#d35400','#2980b9'];
       let colorIdx = 0;
 
-      geojson.features.forEach(feature => {
-        if (!feature.geometry) return;
-        const nom = feature.properties.name || 'Inconnu';
+      epciData.forEach(epci => {
+        if (!epci.contour) return;
+        const nom = epci.nom || 'Inconnu';
         const color = palette[colorIdx % palette.length];
         colorIdx++;
 
-        // Polygone de l'EPCI
+        const feature = { type: 'Feature', geometry: epci.contour, properties: { name: nom } };
+
         const layer = L.geoJSON(feature, {
           style: {
             color: color,
@@ -1646,12 +1631,12 @@ out geom;
           interactive: true
         });
 
-        // Tooltip permanent (nom toujours visible)
-        const center = geojsonCenter(feature.geometry);
-        // Raccourcir le nom pour affichage : supprimer préfixe CC/CA/CU
+        // Raccourcir le nom : supprimer préfixe CC/CA/CU
         const nomCourt = nom
           .replace(/^(Communauté d['']agglomération|Communauté de communes|Communauté urbaine|CA |CC |CU )/i, '')
           .trim();
+
+        const center = geojsonCenter(epci.contour);
 
         const tooltip = L.tooltip({
           permanent: true,
@@ -1664,11 +1649,10 @@ out geom;
         layer.bindTooltip(tooltip);
         layer.bindPopup(`<strong>${nom}</strong>`);
         layer.addTo(mapInstance);
-        // Ouvrir le tooltip permanent après ajout à la carte
         layer.openTooltip(L.latLng(center[0], center[1]));
       });
 
-      // Ajouter CSS pour les étiquettes EPCI
+      // CSS étiquettes EPCI
       if (!document.getElementById('epci-label-style')) {
         const style = document.createElement('style');
         style.id = 'epci-label-style';
