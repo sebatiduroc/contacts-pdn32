@@ -457,6 +457,30 @@ td a:hover { text-decoration: underline; }
 }
 .user-admin-item .nom { font-weight: 600; flex: 1; }
 
+.desactives-section {
+  margin-top: 24px;
+  border-top: 2px dashed #f5c6c2;
+  padding-top: 18px;
+}
+.desactives-section h4 {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--rouge);
+  margin-bottom: 12px;
+  display: flex; align-items: center; gap: 6px;
+}
+.user-admin-item-desactive {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 14px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+  font-size: 0.88rem;
+  flex-wrap: wrap;
+  opacity: 0.85;
+}
+.user-admin-item-desactive .nom { font-weight: 600; flex: 1; color: var(--rouge); }
+
 /* ===== TOAST ===== */
 #toast {
   position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
@@ -1522,10 +1546,14 @@ async function renderInvitations() {
 async function renderUsersAdmin() {
   const list = document.getElementById('users-admin-list');
   list.innerHTML = '';
-  allPromeneurs.forEach(p => {
+
+  const actifs = allPromeneurs.filter(p => !p.desactive);
+  const desactives = allPromeneurs.filter(p => p.desactive);
+
+  // --- Comptes actifs ---
+  actifs.forEach(p => {
     const div = document.createElement('div');
     div.className = 'user-admin-item';
-    const masqueBtnLabel = p.masque ? '👁️ Afficher' : '🙈 Masquer';
     const masqueBtnClass = p.masque ? 'btn-success' : 'btn-danger';
     div.innerHTML = `
       <span class="nom">${p.nom || '—'}${p.masque ? ' <em style="font-size:0.75rem;color:var(--rouge)">(masquée)</em>' : ''}</span>
@@ -1540,8 +1568,32 @@ async function renderUsersAdmin() {
     `;
     list.appendChild(div);
   });
-}
 
+  // --- Comptes désactivés ---
+  if (desactives.length > 0) {
+    const section = document.createElement('div');
+    section.className = 'desactives-section';
+    section.innerHTML = `<h4>🔒 Comptes désactivés (${desactives.length})</h4>`;
+    const subList = document.createElement('div');
+    subList.style.cssText = 'display:flex;flex-direction:column;gap:8px';
+    desactives.forEach(p => {
+      const div = document.createElement('div');
+      div.className = 'user-admin-item-desactive';
+      div.innerHTML = `
+        <span class="nom">${p.nom || '—'}</span>
+        ${badgePublic(p.public)}
+        <span style="color:#b91c1c;font-size:0.8rem">${p.email || 'pas de compte'}</span>
+        <div style="margin-left:auto;display:flex;gap:5px;flex-wrap:nowrap">
+          <button class="btn btn-success btn-sm" style="font-size:0.72rem;padding:5px 8px" title="Réactiver la fiche" onclick="reactiverCompte('${p.id}')">🔓 Réactiver</button>
+          <button class="btn btn-danger btn-sm" style="font-size:0.72rem;padding:5px 8px" onclick="supprimerFiche('${p.id}')">🗑️</button>
+        </div>
+      `;
+      subList.appendChild(div);
+    });
+    section.appendChild(subList);
+    list.appendChild(section);
+  }
+}
 window.basculerMasque = async function(id, estMasque) {
   const p = allPromeneurs.find(x => x.id === id);
   const action = estMasque ? 'afficher' : 'masquer';
@@ -1648,6 +1700,17 @@ window.desactiverCompte = async function(ficheId, uid) {
   const idx = allPromeneurs.findIndex(x => x.id === ficheId);
   if (idx >= 0) allPromeneurs[idx].desactive = true;
   toast(`Compte de ${p?.nom} marqué désactivé. Supprimez aussi le compte dans la console Firebase Auth.`);
+  renderAdmin();
+};
+
+window.reactiverCompte = async function(ficheId) {
+  const p = allPromeneurs.find(x => x.id === ficheId);
+  if (!confirm(`Réactiver la fiche de ${p?.nom || 'ce promeneur'} ? La fiche sera à nouveau visible. Vous pourrez ensuite générer un code d'invitation pour qu'il recrée son accès.`)) return;
+  await updateDoc(doc(db, 'promeneurs', ficheId), { desactive: false });
+  const idx = allPromeneurs.findIndex(x => x.id === ficheId);
+  if (idx >= 0) allPromeneurs[idx].desactive = false;
+  toast(`Fiche de ${p?.nom} réactivée.`);
+  renderTableau();
   renderAdmin();
 };
 
