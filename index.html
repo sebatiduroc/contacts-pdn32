@@ -1080,6 +1080,7 @@ function renderFiche() {
 
   const tels = [p.tel1, p.tel2].filter(Boolean);
   const rs = rsLink(p.rsLien);
+  const site = p.site ? `<a href="${p.site}" target="_blank">${p.site}</a>` : '—';
   const emailLink = p.email ? `<a href="mailto:${p.email}">${p.email}</a>` : '—';
   const gpsDisplay = p.gps || ((p.lat && p.lng) ? `${p.lat},${p.lng}` : '');
 
