@@ -1432,6 +1432,130 @@ function renderMaFiche() {
     }
 
 // ===== CARTE =====
+
+// Convertit un résultat Overpass JSON en FeatureCollection GeoJSON simple
+function overpassToGeoJSON(data) {
+  const waysById = {};
+  const relations = [];
+  data.elements.forEach(el => {
+    if (el.type === 'way') waysById[el.id] = el;
+    if (el.type === 'relation') relations.push(el);
+  });
+
+  const features = [];
+  relations.forEach(rel => {
+    const name = rel.tags && (rel.tags.name || rel.tags['name:fr'] || '');
+    // Reconstituer les anneaux à partir des ways membres
+    const outerWays = rel.members.filter(m => m.type === 'way' && m.role === 'outer');
+    // Construire les coordonnées en chaînant les segments
+    let rings = [];
+    let currentRing = [];
+    const usedWays = new Set();
+
+    function appendWay(wayId, reverse) {
+      const way = waysById[wayId];
+      if (!way || !way.geometry) return false;
+      const coords = way.geometry.map(n => [n.lon, n.lat]);
+      if (reverse) coords.reverse();
+      if (currentRing.length === 0) {
+        currentRing.push(...coords);
+      } else {
+        currentRing.push(...coords.slice(1));
+      }
+      return true;
+    }
+
+    // Algorithme simple de chaînage
+    let remaining = outerWays.map(m => m.ref);
+    if (remaining.length > 0) {
+      appendWay(remaining[0], false);
+      usedWays.add(remaining[0]);
+      remaining = remaining.slice(1);
+      let iterations = 0;
+      while (remaining.length > 0 && iterations < remaining.length * 2 + 10) {
+        iterations++;
+        const lastPt = currentRing[currentRing.length - 1];
+        let found = false;
+        for (let i = 0; i < remaining.length; i++) {
+          const way = waysById[remaining[i]];
+          if (!way || !way.geometry) continue;
+          const first = way.geometry[0];
+          const last = way.geometry[way.geometry.length - 1];
+          if (Math.abs(first.lon - lastPt[0]) < 0.0001 && Math.abs(first.lat - lastPt[1]) < 0.0001) {
+            appendWay(remaining[i], false);
+            remaining.splice(i, 1);
+            found = true;
+            break;
+          } else if (Math.abs(last.lon - lastPt[0]) < 0.0001 && Math.abs(last.lat - lastPt[1]) < 0.0001) {
+            appendWay(remaining[i], true);
+            remaining.splice(i, 1);
+            found = true;
+            break;
+          }
+        }
+        // Fermeture d'anneau ou si bloqué
+        if (!found) {
+          if (currentRing.length > 2) {
+            const fp = currentRing[0], lp = currentRing[currentRing.length - 1];
+            if (Math.abs(fp[0] - lp[0]) > 0.001 || Math.abs(fp[1] - lp[1]) > 0.001) {
+              currentRing.push(currentRing[0]);
+            }
+            rings.push([...currentRing]);
+          }
+          currentRing = [];
+          if (remaining.length > 0) {
+            appendWay(remaining[0], false);
+            remaining.splice(0, 1);
+          }
+        }
+      }
+    }
+    if (currentRing.length > 2) {
+      currentRing.push(currentRing[0]);
+      rings.push(currentRing);
+    }
+
+    if (rings.length === 0) return;
+    const geom = rings.length === 1
+      ? { type: 'Polygon', coordinates: rings }
+      : { type: 'MultiPolygon', coordinates: rings.map(r => [r]) };
+
+    features.push({ type: 'Feature', geometry: geom, properties: { name } });
+  });
+  return { type: 'FeatureCollection', features };
+}
+
+// Calcule le centre approximatif d'un GeoJSON polygon/multipolygon
+function geojsonCenter(geom) {
+  let coords = [];
+  if (geom.type === 'Polygon') coords = geom.coordinates[0];
+  else if (geom.type === 'MultiPolygon') coords = geom.coordinates[0][0];
+  if (!coords.length) return [0, 0];
+  const lat = coords.reduce((s, c) => s + c[1], 0) / coords.length;
+  const lng = coords.reduce((s, c) => s + c[0], 0) / coords.length;
+  return [lat, lng];
+}
+
+function invertedGeoJson(geojson) {
+  let interiorRings = [];
+  if (geojson.type === 'Polygon') {
+    interiorRings = geojson.coordinates;
+  } else if (geojson.type === 'MultiPolygon') {
+    geojson.coordinates.forEach(poly => poly.forEach(ring => interiorRings.push(ring)));
+  }
+  return {
+    type: 'Feature',
+    geometry: {
+      type: 'Polygon',
+      coordinates: [
+        [[-180,-90],[180,-90],[180,90],[-180,90],[-180,-90]],
+        ...interiorRings
+      ]
+    },
+    properties: {}
+  };
+}
+
 async function initCarte() {
   if (mapInstance) { mapInstance.invalidateSize(); updateMarkers(); return; }
 
@@ -1446,66 +1570,16 @@ async function initCarte() {
     attribution: '© OpenStreetMap contributors'
   }).addTo(mapInstance);
 
-  // Charger le contour du Gers (département 32) depuis Nominatim/OSM
+  // 1. Contour du Gers + masque extérieur
   try {
-    const resp = await fetch('https://nominatim.openstreetmap.org/search?county=Gers&state=Occitanie&country=France&format=json&polygon_geojson=1&limit=1');
+    const resp = await fetch('https://nominatim.openstreetmap.org/search?county=Gers&state=Occitanie&country=France&format=json&polygon_geojson=1&limit=1', {
+      headers: { 'Accept-Language': 'fr' }
+    });
     const data = await resp.json();
     if (data && data[0] && data[0].geojson) {
       const gersGeoJson = data[0].geojson;
 
-      // Couche de fond atténuée (masque extérieur)
-      // On utilise un GeoJSON inverse : monde entier moins le Gers
-      const monde = {
-        type: "Feature",
-        geometry: {
-          type: "Polygon",
-          coordinates: [[[-180,-90],[180,-90],[180,90],[-180,90],[-180,-90]]]
-        }
-      };
-      // Construire un masque via SVG overlay Leaflet
-      const maskLayer = L.geoJSON({
-        type: "FeatureCollection",
-        features: [
-          {
-            type: "Feature",
-            geometry: gersGeoJson,
-            properties: {}
-          }
-        ]
-      }, {
-        style: {
-          color: '#1a3a5c',
-          weight: 2.5,
-          opacity: 1,
-          fillColor: 'transparent',
-          fillOpacity: 0
-        }
-      }).addTo(mapInstance);
-
-      // Couche atténuation : rectangle monde avec trou = Gers
-      // Utiliser un polygone inversé pour griser l'extérieur
-      function invertedGeoJson(geojson) {
-        // Coordonnées du monde entier
-        const worldCoords = [[-90, -180], [-90, 180], [90, 180], [90, -180], [-90, -180]];
-        let interiorRings = [];
-        if (geojson.type === 'Polygon') {
-          interiorRings = geojson.coordinates;
-        } else if (geojson.type === 'MultiPolygon') {
-          geojson.coordinates.forEach(poly => poly.forEach(ring => interiorRings.push(ring)));
-        }
-        return {
-          type: 'Feature',
-          geometry: {
-            type: 'Polygon',
-            coordinates: [
-              [[-180,-90],[180,-90],[180,90],[-180,90],[-180,-90]],
-              ...interiorRings
-            ]
-          },
-          properties: {}
-        };
-      }
-
+      // Voile gris à l'extérieur du Gers
       L.geoJSON(invertedGeoJson(gersGeoJson), {
         style: {
           color: 'transparent',
@@ -1517,19 +1591,98 @@ async function initCarte() {
         interactive: false
       }).addTo(mapInstance);
 
-      // Contour Gers bien visible par-dessus
+      // Contour extérieur du Gers (par-dessus tout)
       L.geoJSON({ type: 'Feature', geometry: gersGeoJson, properties: {} }, {
-        style: {
-          color: '#1a3a5c',
-          weight: 2.5,
-          opacity: 0.9,
-          fill: false
-        },
+        style: { color: '#1a3a5c', weight: 2.5, opacity: 0.9, fill: false },
         interactive: false
       }).addTo(mapInstance);
     }
   } catch(e) {
-    console.warn('Impossible de charger le contour du Gers :', e);
+    console.warn('Contour Gers:', e);
+  }
+
+  // 2. Intercommunalités du Gers via Overpass (admin_level=8, type EPCI)
+  try {
+    // Requête Overpass : relations boundary administrative level 8 dans le Gers (département 32 = relation OSM)
+    const overpassQuery = `
+[out:json][timeout:60];
+// Département du Gers
+rel["name"="Gers"]["admin_level"="6"]->.dept;
+// Toutes les intercommunalités (EPCI) à l'intérieur
+rel(area.dept)["boundary"="administrative"]["admin_level"="8"];
+out geom;
+`;
+    const ovResp = await fetch('https://overpass-api.de/api/interpreter', {
+      method: 'POST',
+      body: 'data=' + encodeURIComponent(overpassQuery)
+    });
+    const ovData = await ovResp.json();
+
+    if (ovData && ovData.elements && ovData.elements.length > 0) {
+      const geojson = overpassToGeoJSON(ovData);
+
+      // Couleurs alternées pour distinguer les EPCI
+      const palette = ['#2d6a9f','#c8973a','#27ae60','#8e44ad','#c0392b','#16a085','#d35400','#2980b9'];
+      let colorIdx = 0;
+
+      geojson.features.forEach(feature => {
+        if (!feature.geometry) return;
+        const nom = feature.properties.name || 'Inconnu';
+        const color = palette[colorIdx % palette.length];
+        colorIdx++;
+
+        // Polygone de l'EPCI
+        const layer = L.geoJSON(feature, {
+          style: {
+            color: color,
+            weight: 1.5,
+            opacity: 0.85,
+            fillColor: color,
+            fillOpacity: 0.06,
+            dashArray: '5,4'
+          },
+          interactive: true
+        });
+
+        // Tooltip permanent (nom toujours visible)
+        const center = geojsonCenter(feature.geometry);
+        // Raccourcir le nom pour affichage : supprimer préfixe CC/CA/CU
+        const nomCourt = nom
+          .replace(/^(Communauté d['']agglomération|Communauté de communes|Communauté urbaine|CA |CC |CU )/i, '')
+          .trim();
+
+        const tooltip = L.tooltip({
+          permanent: true,
+          direction: 'center',
+          className: 'epci-label',
+          interactive: false,
+          opacity: 0.92
+        }).setContent(`<span style="font-size:0.72rem;font-weight:600;color:#1a3a5c;text-align:center;display:block;line-height:1.2;max-width:120px;">${nomCourt}</span>`);
+
+        layer.bindTooltip(tooltip);
+        layer.bindPopup(`<strong>${nom}</strong>`);
+        layer.addTo(mapInstance);
+      });
+
+      // Ajouter CSS pour les étiquettes EPCI
+      if (!document.getElementById('epci-label-style')) {
+        const style = document.createElement('style');
+        style.id = 'epci-label-style';
+        style.textContent = `
+          .epci-label {
+            background: rgba(255,255,255,0.82);
+            border: none !important;
+            box-shadow: none !important;
+            padding: 2px 5px !important;
+            border-radius: 3px;
+          }
+          .epci-label::before { display: none !important; }
+        `;
+        document.head.appendChild(style);
+      }
+    }
+  } catch(e) {
+    console.warn('Intercommunalités Gers:', e);
   }
 
   updateMarkers();
