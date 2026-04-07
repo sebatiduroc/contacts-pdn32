@@ -1601,15 +1601,18 @@ async function initCarte() {
     console.warn('Contour Gers:', e);
   }
 
-  // 2. Intercommunalités du Gers via Overpass (admin_level=8, type EPCI)
+  // 2. Intercommunalités du Gers via Overpass (admin_level=7 = EPCI en France)
   try {
-    // Requête Overpass : relations boundary administrative level 8 dans le Gers (département 32 = relation OSM)
+    // Requête Overpass : relations boundary administrative level 7 dans le Gers
+    // En France : niveau 6 = département, niveau 7 = EPCI/intercommunalités, niveau 8 = communes
     const overpassQuery = `
 [out:json][timeout:60];
-// Département du Gers
+// Département du Gers (admin_level 6)
 rel["name"="Gers"]["admin_level"="6"]->.dept;
-// Toutes les intercommunalités (EPCI) à l'intérieur
-rel(area.dept)["boundary"="administrative"]["admin_level"="8"];
+// Toutes les intercommunalités (EPCI, admin_level 7) à l'intérieur
+(
+  rel(area.dept)["boundary"="administrative"]["admin_level"="7"];
+);
 out geom;
 `;
     const ovResp = await fetch('https://overpass-api.de/api/interpreter', {
@@ -1662,6 +1665,8 @@ out geom;
         layer.bindTooltip(tooltip);
         layer.bindPopup(`<strong>${nom}</strong>`);
         layer.addTo(mapInstance);
+        // Ouvrir le tooltip permanent après ajout à la carte
+        layer.openTooltip(L.latLng(center[0], center[1]));
       });
 
       // Ajouter CSS pour les étiquettes EPCI
@@ -1732,7 +1737,6 @@ async function calculerItineraire() {
 
       if (routeLayer) mapInstance.removeLayer(routeLayer);
       routeLayer = L.geoJSON(route.geometry, { style: { color: '#2d6a9f', weight: 4 } }).addTo(mapInstance);
-      mapInstance.fitBounds(routeLayer.getBounds(), { padding: [30, 30] });
 
       document.getElementById('route-info').style.display = 'block';
       document.getElementById('route-info').innerHTML = `
