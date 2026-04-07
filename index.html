@@ -1432,12 +1432,106 @@ function renderMaFiche() {
     }
 
 // ===== CARTE =====
-function initCarte() {
+async function initCarte() {
   if (mapInstance) { mapInstance.invalidateSize(); updateMarkers(); return; }
-  mapInstance = L.map('map').setView([43.65, 0.58], 9);
+
+  // Zoom plus progressif
+  mapInstance = L.map('map', {
+    zoomDelta: 0.5,
+    zoomSnap: 0.5,
+    wheelPxPerZoomLevel: 120
+  }).setView([43.65, 0.58], 9);
+
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© OpenStreetMap contributors'
   }).addTo(mapInstance);
+
+  // Charger le contour du Gers (département 32) depuis Nominatim/OSM
+  try {
+    const resp = await fetch('https://nominatim.openstreetmap.org/search?county=Gers&state=Occitanie&country=France&format=json&polygon_geojson=1&limit=1');
+    const data = await resp.json();
+    if (data && data[0] && data[0].geojson) {
+      const gersGeoJson = data[0].geojson;
+
+      // Couche de fond atténuée (masque extérieur)
+      // On utilise un GeoJSON inverse : monde entier moins le Gers
+      const monde = {
+        type: "Feature",
+        geometry: {
+          type: "Polygon",
+          coordinates: [[[-180,-90],[180,-90],[180,90],[-180,90],[-180,-90]]]
+        }
+      };
+      // Construire un masque via SVG overlay Leaflet
+      const maskLayer = L.geoJSON({
+        type: "FeatureCollection",
+        features: [
+          {
+            type: "Feature",
+            geometry: gersGeoJson,
+            properties: {}
+          }
+        ]
+      }, {
+        style: {
+          color: '#1a3a5c',
+          weight: 2.5,
+          opacity: 1,
+          fillColor: 'transparent',
+          fillOpacity: 0
+        }
+      }).addTo(mapInstance);
+
+      // Couche atténuation : rectangle monde avec trou = Gers
+      // Utiliser un polygone inversé pour griser l'extérieur
+      function invertedGeoJson(geojson) {
+        // Coordonnées du monde entier
+        const worldCoords = [[-90, -180], [-90, 180], [90, 180], [90, -180], [-90, -180]];
+        let interiorRings = [];
+        if (geojson.type === 'Polygon') {
+          interiorRings = geojson.coordinates;
+        } else if (geojson.type === 'MultiPolygon') {
+          geojson.coordinates.forEach(poly => poly.forEach(ring => interiorRings.push(ring)));
+        }
+        return {
+          type: 'Feature',
+          geometry: {
+            type: 'Polygon',
+            coordinates: [
+              [[-180,-90],[180,-90],[180,90],[-180,90],[-180,-90]],
+              ...interiorRings
+            ]
+          },
+          properties: {}
+        };
+      }
+
+      L.geoJSON(invertedGeoJson(gersGeoJson), {
+        style: {
+          color: 'transparent',
+          weight: 0,
+          fillColor: '#888888',
+          fillOpacity: 0.45,
+          fillRule: 'evenodd'
+        },
+        interactive: false
+      }).addTo(mapInstance);
+
+      // Contour Gers bien visible par-dessus
+      L.geoJSON({ type: 'Feature', geometry: gersGeoJson, properties: {} }, {
+        style: {
+          color: '#1a3a5c',
+          weight: 2.5,
+          opacity: 0.9,
+          fill: false
+        },
+        interactive: false
+      }).addTo(mapInstance);
+    }
+  } catch(e) {
+    console.warn('Impossible de charger le contour du Gers :', e);
+  }
+
   updateMarkers();
 }
 
