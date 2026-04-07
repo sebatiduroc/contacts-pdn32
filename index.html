@@ -1322,11 +1322,18 @@ window.sauvegarderFiche = async function() {
   try {
     await updateDoc(doc(db, 'promeneurs', id), nouveau);
     // Mise à jour locale immédiate
+    // On remplace la sentinelle serverTimestamp() par un vrai objet Date
+    // pour que formatDate() puisse l'afficher sans attendre un rechargement
+    const maintenant = new Date();
+    const nouveauLocal = {
+      ...nouveau,
+      dateMaj: { toDate: () => maintenant }
+    };
     const idx = allPromeneurs.findIndex(x => x.id === id);
-    allPromeneurs[idx] = { ...p, ...nouveau };
+    allPromeneurs[idx] = { ...p, ...nouveauLocal };
     // Mettre à jour currentUserData si c'est sa propre fiche
     if (currentUserData && currentUserData.id === id) {
-      currentUserData = { ...currentUserData, ...nouveau };
+      currentUserData = { ...currentUserData, ...nouveauLocal };
     }
     ficheList = getFiltered();
 
