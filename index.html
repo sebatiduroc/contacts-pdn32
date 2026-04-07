@@ -994,29 +994,37 @@ window.accederEnInvite = async function() {
   loader(true);
   isInvite = true;
   currentUser = null; currentUserData = null; isCoordinateur = false;
-  const snap = await getDocs(query(collection(db, 'promeneurs'), orderBy('nom')));
-  allPromeneurs = [];
-  snap.forEach(d => allPromeneurs.push({ id: d.id, ...d.data() }));
+  try {
+    const snap = await getDocs(query(collection(db, 'promeneurs'), orderBy('nom')));
+    allPromeneurs = [];
+    snap.forEach(d => allPromeneurs.push({ id: d.id, ...d.data() }));
+  } catch(e) {
+    console.error('Erreur chargement invité:', e);
+  }
+  // Afficher l'app avant de rendre les composants
   document.getElementById('screen-login').style.display = 'none';
   document.getElementById('screen-app').style.display = 'block';
   document.getElementById('main-nav').style.display = 'flex';
   document.getElementById('user-info').style.display = 'flex';
-  document.getElementById('user-name').textContent = 'Invité';
+  document.getElementById('user-name').textContent = '👁️ Invité';
   document.getElementById('tab-ma-fiche').style.display = 'none';
+  loader(false);
   populateFiltres();
   renderTableau();
-  showTab('tableau');
+  // Activer manuellement l'onglet tableau
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById('screen-tableau').classList.add('active');
+  document.getElementById('tab-tableau').classList.add('active');
   updateCompteur();
-  loader(false);
 };
 
 // ===== ÉTAT AUTH =====
 onAuthStateChanged(auth, async (user) => {
-  if (isInvite) return; // mode invité, ignorer les changements d'état Auth
-  loader(true);
+  if (isInvite) return; // mode invité actif, ignorer
   if (user) {
+    loader(true);
     currentUser = user;
-    // Chercher la fiche du promeneur par uid
     const q = query(collection(db, 'promeneurs'), orderBy('nom'));
     const snap = await getDocs(q);
     allPromeneurs = [];
@@ -1040,20 +1048,23 @@ onAuthStateChanged(auth, async (user) => {
     renderMaFiche();
     showTab('ma-fiche');
     updateCompteur();
-    // Horodater la connexion comme dernière vérification
     if (currentUserData) {
       updateDoc(doc(db, 'promeneurs', currentUserData.id), { dateVerif: serverTimestamp() });
     }
     loader(false);
   } else {
-    currentUser = null; currentUserData = null;
-    document.getElementById('screen-login').style.display = 'flex';
-    document.getElementById('screen-app').style.display = 'none';
-    document.getElementById('main-nav').style.display = 'none';
-    document.getElementById('user-info').style.display = 'none';
-    loader(false);
+    // Pas de user connecté ET pas en mode invité → écran login
+    if (!isInvite) {
+      currentUser = null; currentUserData = null;
+      document.getElementById('screen-login').style.display = 'flex';
+      document.getElementById('screen-app').style.display = 'none';
+      document.getElementById('main-nav').style.display = 'none';
+      document.getElementById('user-info').style.display = 'none';
+      loader(false);
+    }
   }
 });
+
 
 // ===== NAVIGATION ONGLETS =====
 function updateCompteur() {
