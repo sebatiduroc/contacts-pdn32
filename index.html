@@ -1601,18 +1601,17 @@ async function initCarte() {
     console.warn('Contour Gers:', e);
   }
 
-  // 2. Intercommunalités du Gers via Overpass (admin_level=7 = EPCI en France)
+  // 2. Intercommunalités du Gers via Overpass (EPCI = admin_level 7 en France)
   try {
-    // Requête Overpass : relations boundary administrative level 7 dans le Gers
-    // En France : niveau 6 = département, niveau 7 = EPCI/intercommunalités, niveau 8 = communes
+    // Requête Overpass correcte : convertir la relation département en area via map_to_area
+    // puis chercher les relations admin_level=7 (EPCI) à l'intérieur
     const overpassQuery = `
-[out:json][timeout:60];
-// Département du Gers (admin_level 6)
-rel["name"="Gers"]["admin_level"="6"]->.dept;
-// Toutes les intercommunalités (EPCI, admin_level 7) à l'intérieur
-(
-  rel(area.dept)["boundary"="administrative"]["admin_level"="7"];
-);
+[out:json][timeout:90];
+// Département du Gers via code INSEE 32
+rel["ref:INSEE"="32"]["admin_level"="6"]->.dept;
+map_to_area .dept -> .deptArea;
+// Intercommunalités EPCI (admin_level 7 en France)
+rel(area.deptArea)["boundary"="administrative"]["admin_level"="7"];
 out geom;
 `;
     const ovResp = await fetch('https://overpass-api.de/api/interpreter', {
