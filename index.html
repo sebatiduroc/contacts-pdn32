@@ -519,10 +519,10 @@ td a:hover { text-decoration: underline; }
 
 <!-- EN-TÊTE -->
 <header>
-  <h1>Promeneurs du Net <span>32</span></h1>
+  <h1>Promeneurs du Net <span>32</span><span id="compteur-pdn" style="font-size:0.75rem;font-weight:300;opacity:0.7;margin-left:10px"></span></h1>
   <div id="user-info" style="display:none">
     <span id="user-name"></span>
-    <button class="btn-logout" id="btn-logout" onclick="logout()">Déconnexion</button>
+    <button class="btn-logout" id="btn-logout" onclick="logout()" style="font-size:0.72rem;padding:4px 9px">Déco.</button>
   </div>
 </header>
 
@@ -557,6 +557,10 @@ td a:hover { text-decoration: underline; }
         <input type="password" id="login-pwd" placeholder="••••••••">
       </div>
       <button class="btn btn-primary btn-full" onclick="doLogin()">Se connecter</button>
+      <div style="text-align:center;margin-top:16px">
+        <span style="font-size:0.82rem;color:var(--gris-texte)">ou</span>
+      </div>
+      <button class="btn btn-secondary btn-full" style="margin-top:10px" onclick="accederEnInvite()">👁️ Consulter en tant qu'invité</button>
     </div>
 
     <!-- Inscription -->
@@ -659,10 +663,35 @@ td a:hover { text-decoration: underline; }
 <div id="screen-admin" class="screen">
   <!-- Invitations -->
   <div class="admin-section">
-    <h3>🎟️ Codes d'invitation</h3>
-    <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
-      <button class="btn btn-primary" onclick="genererCode()">Générer un nouveau code</button>
+    <h3>🎟️ Générer un code d'invitation</h3>
+    <div style="margin-bottom:16px">
+      <div class="form-group">
+        <label>Type d'invitation</label>
+        <select id="inv-type" onchange="toggleInvType()" style="max-width:320px">
+          <option value="existante">Lier à une fiche existante</option>
+          <option value="nouvelle">Créer une nouvelle fiche</option>
+        </select>
+      </div>
+      <div id="inv-existante">
+        <div class="form-group">
+          <label>Choisir le promeneur</label>
+          <select id="inv-fiche-select" style="max-width:320px"></select>
+        </div>
+      </div>
+      <div id="inv-nouvelle" style="display:none">
+        <div class="form-group">
+          <label>Nom Prénom du nouveau promeneur</label>
+          <input type="text" id="inv-nouveau-nom" placeholder="ex: DUPONT Jean" style="max-width:320px">
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="genererCode()">Générer le code</button>
     </div>
+    <div id="inv-resultat" style="display:none;background:#eafaf1;border:1px solid #a9dfbf;border-radius:8px;padding:16px;margin-bottom:16px">
+      <p style="font-weight:600;margin-bottom:6px">✅ Code généré :</p>
+      <p style="font-family:monospace;font-size:1.3rem;letter-spacing:0.1em;color:var(--bleu)" id="inv-code-affiche"></p>
+      <p style="font-size:0.88rem;margin-top:8px;color:var(--gris-texte)" id="inv-message-affiche"></p>
+    </div>
+    <h4 style="margin-bottom:10px;font-size:0.95rem;color:var(--gris-texte)">Codes existants</h4>
     <div class="invitation-list" id="invitation-list"></div>
   </div>
 
@@ -670,18 +699,6 @@ td a:hover { text-decoration: underline; }
   <div class="admin-section">
     <h3>👥 Gestion des comptes</h3>
     <div class="users-admin-list" id="users-admin-list"></div>
-  </div>
-
-  <!-- Nouvelle fiche -->
-  <div class="admin-section">
-    <h3>➕ Créer une fiche vide</h3>
-    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
-      <div class="form-group" style="margin:0;flex:1;min-width:200px">
-        <label>Nom Prénom</label>
-        <input type="text" id="new-fiche-nom" placeholder="ex: DUPONT Jean">
-      </div>
-      <button class="btn btn-primary" onclick="creerFicheVide()">Créer la fiche</button>
-    </div>
   </div>
 
   <!-- Transfert coordinateur -->
@@ -702,6 +719,10 @@ td a:hover { text-decoration: underline; }
 
 </main>
 </div>
+
+<footer style="text-align:center;padding:18px;font-size:0.78rem;color:var(--gris-texte);border-top:1px solid var(--gris);margin-top:20px">
+  Créé par Sébastien Dumortier, avril 2026
+</footer>
 
 <!-- ===== MODAL ÉDITION FICHE ===== -->
 <div class="modal-overlay" id="modal-edit">
@@ -730,7 +751,25 @@ td a:hover { text-decoration: underline; }
       <div class="form-row">
         <div class="form-group">
           <label>Secteur</label>
-          <input type="text" id="edit-secteur">
+          <select id="edit-secteur">
+            <option value="">— Choisir un secteur —</option>
+            <option value="Tout le département">Tout le département</option>
+            <option value="Grand Auch Coeur de Gascogne">CA Grand Auch Cœur de Gascogne</option>
+            <option value="Armagnac Adour">CC Armagnac Adour</option>
+            <option value="Artagnan en Fezensac">CC Artagnan en Fezensac</option>
+            <option value="Astarac-Arros en Gascogne">CC Astarac Arros en Gascogne</option>
+            <option value="Bas Armagnac">CC du Bas Armagnac</option>
+            <option value="Bastides de Lomagne">CC Bastides de Lomagne</option>
+            <option value="Bastides et Vallons du Gers">CC Bastides et Vallons du Gers</option>
+            <option value="Coeur d'Astarac en Gascogne">CC Cœur d'Astarac en Gascogne</option>
+            <option value="Coteaux Arrats Gimone">CC des Coteaux Arrats Gimone</option>
+            <option value="Gascogne Toulousaine">CC de la Gascogne Toulousaine</option>
+            <option value="Grand Armagnac">CC du Grand Armagnac</option>
+            <option value="Lomagne Gersoise">CC de la Lomagne Gersoise</option>
+            <option value="Saves">CC du Saves</option>
+            <option value="Ténarèze">CC de la Ténarèze</option>
+            <option value="Val de Gers">CC Val de Gers</option>
+          </select>
         </div>
         <div class="form-group">
           <label>Référent CAF</label>
@@ -816,6 +855,7 @@ let mapMarkers = [];
 let routeLayer = null;
 let routePoints = [];
 let isCoordinateur = false;
+let isInvite = false;
 
 // ===== UTILITAIRES =====
 function toast(msg, duree = 3000) {
@@ -936,11 +976,41 @@ window.doRegister = async function() {
 };
 
 window.logout = async function() {
+  if (isInvite) {
+    isInvite = false;
+    document.getElementById('screen-login').style.display = 'flex';
+    document.getElementById('screen-app').style.display = 'none';
+    document.getElementById('main-nav').style.display = 'none';
+    document.getElementById('user-info').style.display = 'none';
+    document.getElementById('tab-ma-fiche').style.display = '';
+    return;
+  }
   await signOut(auth);
+};
+
+window.accederEnInvite = async function() {
+  loader(true);
+  isInvite = true;
+  currentUser = null; currentUserData = null; isCoordinateur = false;
+  const snap = await getDocs(query(collection(db, 'promeneurs'), orderBy('nom')));
+  allPromeneurs = [];
+  snap.forEach(d => allPromeneurs.push({ id: d.id, ...d.data() }));
+  document.getElementById('screen-login').style.display = 'none';
+  document.getElementById('screen-app').style.display = 'block';
+  document.getElementById('main-nav').style.display = 'flex';
+  document.getElementById('user-info').style.display = 'flex';
+  document.getElementById('user-name').textContent = 'Invité';
+  document.getElementById('tab-ma-fiche').style.display = 'none';
+  populateFiltres();
+  renderTableau();
+  showTab('tableau');
+  updateCompteur();
+  loader(false);
 };
 
 // ===== ÉTAT AUTH =====
 onAuthStateChanged(auth, async (user) => {
+  if (isInvite) return; // mode invité, ignorer les changements d'état Auth
   loader(true);
   if (user) {
     currentUser = user;
@@ -967,6 +1037,7 @@ onAuthStateChanged(auth, async (user) => {
     renderTableau();
     renderMaFiche();
     showTab('ma-fiche');
+    updateCompteur();
     // Horodater la connexion comme dernière vérification
     if (currentUserData) {
       updateDoc(doc(db, 'promeneurs', currentUserData.id), { dateVerif: serverTimestamp() });
@@ -983,6 +1054,14 @@ onAuthStateChanged(auth, async (user) => {
 });
 
 // ===== NAVIGATION ONGLETS =====
+function updateCompteur() {
+  const nb = allPromeneurs.filter(p =>
+    !p.masque && p.public !== 'Coordinateur'
+  ).length;
+  const el = document.getElementById('compteur-pdn');
+  if (el) el.textContent = `(${nb} PdN)`;
+}
+
 window.showTab = function(tab) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
@@ -1013,6 +1092,8 @@ function getFiltered() {
   const sect = document.getElementById('filtre-secteur').value;
   const ref = document.getElementById('filtre-referent').value;
   return allPromeneurs.filter(p => {
+    // Masquer les fiches masquées sauf pour leur proprio et le coordinateur
+    if (p.masque && !isCoordinateur && currentUserData?.id !== p.id) return false;
     if (nom && !p.nom?.toLowerCase().includes(nom) &&
         !p.email?.toLowerCase().includes(nom) &&
         !p.secteur?.toLowerCase().includes(nom)) return false;
@@ -1073,7 +1154,7 @@ window.ficheNav = function(dir) {
 function renderFiche() {
   const p = ficheList[ficheIndex];
   if (!p) return;
-  const canEdit = isCoordinateur || (currentUserData && currentUserData.id === p.id);
+  const canEdit = !isInvite && (isCoordinateur || (currentUserData && currentUserData.id === p.id));
   document.getElementById('fiche-counter').textContent = `${ficheIndex + 1} / ${ficheList.length}`;
   document.getElementById('btn-prev').style.visibility = ficheIndex === 0 ? 'hidden' : 'visible';
   document.getElementById('btn-next').style.visibility = ficheIndex === ficheList.length - 1 ? 'hidden' : 'visible';
@@ -1098,18 +1179,22 @@ function renderFiche() {
     <div class="fiche-header">
       <div class="fiche-header-left">
         <h2>${p.nom || '—'}</h2>
-        <div class="badges">${badgePublic(p.public)}${p.secteur ? `<span class="badge" style="background:#f0ede8;color:var(--bleu)">${p.secteur}</span>` : ''}</div>
+        <div class="badges">${badgePublic(p.public)}${p.secteur ? `<span class="badge" style="background:#f0ede8;color:var(--bleu)">${p.secteur}</span>` : ''}${p.masque ? `<span class="badge" style="background:#fee2e2;color:#991b1b">🙈 Masquée</span>` : ''}</div>
       </div>
       <div class="fiche-header-right">
         ${canEdit ? `<button class="btn btn-or btn-sm" onclick="ouvrirEdit('${p.id}')">✏️ Modifier</button>` : ''}
-        ${isCoordinateur ? `<button class="btn btn-danger btn-sm" onclick="desactiverCompte('${p.id}', '${p.uid || ''}')">🚫 Désactiver</button>` : ''}
+        ${isCoordinateur && !isInvite ? `<button class="btn btn-danger btn-sm" onclick="desactiverCompte('${p.id}', '${p.uid || ''}')">🚫 Désactiver</button>` : ''}
       </div>
     </div>
     <div class="fiche-body">
       <div class="fiche-grid">
         <div class="fiche-field">
-          <div class="fiche-field-label">Téléphone(s)</div>
-          <div class="fiche-field-value">${tels.map(t => telLink(t)).join('<br>') || '—'}</div>
+          <div class="fiche-field-label">Téléphone 1</div>
+          <div class="fiche-field-value">${p.tel1 ? telLink(p.tel1) : '—'}</div>
+        </div>
+        <div class="fiche-field">
+          <div class="fiche-field-label">Téléphone 2</div>
+          <div class="fiche-field-value">${p.tel2 ? telLink(p.tel2) : '—'}</div>
         </div>
         <div class="fiche-field">
           <div class="fiche-field-label">Email professionnel</div>
@@ -1128,14 +1213,17 @@ function renderFiche() {
           <div class="fiche-field-value">${site}</div>
         </div>
         <div class="fiche-field">
+          <div class="fiche-field-label">Secteur</div>
+          <div class="fiche-field-value">${p.secteur || '—'}</div>
+        </div>
+        <div class="fiche-field">
           <div class="fiche-field-label">Référent CAF</div>
           <div class="fiche-field-value">${p.referent || '—'}</div>
         </div>
-        ${gpsDisplay ? `
         <div class="fiche-field">
           <div class="fiche-field-label">Coordonnées GPS</div>
-          <div class="fiche-field-value">${gpsDisplay}</div>
-        </div>` : ''}
+          <div class="fiche-field-value">${gpsDisplay || '—'}</div>
+        </div>
       </div>
       ${datesHtml}
     </div>
@@ -1375,12 +1463,18 @@ window.resetRoute = function() {
 async function renderAdmin() {
   await renderInvitations();
   await renderUsersAdmin();
-  // Remplir select transfert
-  const sel = document.getElementById('transfert-select');
-  sel.innerHTML = '';
-  allPromeneurs.filter(p => p.public !== 'Coordinateur').forEach(p => {
-    sel.innerHTML += `<option value="${p.id}">${p.nom}</option>`;
-  });
+  // Peupler le select des fiches sans compte Auth
+  const sel = document.getElementById('inv-fiche-select');
+  sel.innerHTML = '<option value="">— Choisir —</option>';
+  allPromeneurs
+    .filter(p => !p.uid && p.public !== 'Coordinateur')
+    .sort((a, b) => (a.nom || '').localeCompare(b.nom || ''))
+    .forEach(p => sel.innerHTML += `<option value="${p.id}">${p.nom || '(sans nom)'}</option>`);
+  // Peupler le select transfert
+  const sel2 = document.getElementById('transfert-select');
+  sel2.innerHTML = '';
+  allPromeneurs.filter(p => p.public !== 'Coordinateur')
+    .forEach(p => sel2.innerHTML += `<option value="${p.id}">${p.nom}</option>`);
 }
 
 async function renderInvitations() {
@@ -1395,6 +1489,7 @@ async function renderInvitations() {
     div.className = 'invitation-item' + (inv.used ? ' invitation-used' : '');
     div.innerHTML = `
       <span class="invitation-code">${inv.id}</span>
+      <span style="font-weight:600">${inv.nomPdn || '?'}</span>
       <span>${inv.used ? '✅ Utilisé par ' + (inv.usedBy || '?') : '⏳ En attente'}</span>
       <span style="color:var(--gris-texte);font-size:0.78rem">${formatDate(inv.createdAt)}</span>
       ${!inv.used ? `<button class="btn btn-danger btn-sm" onclick="supprimerCode('${inv.id}')">Supprimer</button>` : ''}
@@ -1409,12 +1504,15 @@ async function renderUsersAdmin() {
   allPromeneurs.forEach(p => {
     const div = document.createElement('div');
     div.className = 'user-admin-item';
+    const masqueBtnLabel = p.masque ? '👁️ Afficher' : '🙈 Masquer';
+    const masqueBtnClass = p.masque ? 'btn-success' : 'btn-danger';
     div.innerHTML = `
-      <span class="nom">${p.nom || '—'}</span>
+      <span class="nom">${p.nom || '—'}${p.masque ? ' <em style="font-size:0.75rem;color:var(--rouge)">(masquée)</em>' : ''}</span>
       ${badgePublic(p.public)}
       <span style="color:var(--gris-texte);font-size:0.8rem">${p.email || 'pas de compte'}</span>
-      <div style="margin-left:auto;display:flex;gap:8px">
+      <div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn btn-secondary btn-sm" onclick="ouvrirEdit('${p.id}')">✏️ Éditer</button>
+        <button class="btn ${masqueBtnClass} btn-sm" onclick="basculerMasque('${p.id}', ${!!p.masque})">${masqueBtnLabel}</button>
         ${p.uid ? `<button class="btn btn-danger btn-sm" onclick="desactiverCompte('${p.id}', '${p.uid}')">🚫 Désactiver</button>` : ''}
         <button class="btn btn-danger btn-sm" onclick="supprimerFiche('${p.id}')">🗑️ Supprimer</button>
       </div>
@@ -1423,17 +1521,70 @@ async function renderUsersAdmin() {
   });
 }
 
+window.basculerMasque = async function(id, estMasque) {
+  const p = allPromeneurs.find(x => x.id === id);
+  const action = estMasque ? 'afficher' : 'masquer';
+  if (!confirm(`${action.charAt(0).toUpperCase() + action.slice(1)} la fiche de ${p?.nom} ?`)) return;
+  await updateDoc(doc(db, 'promeneurs', id), { masque: !estMasque });
+  const idx = allPromeneurs.findIndex(x => x.id === id);
+  allPromeneurs[idx].masque = !estMasque;
+  toast(`Fiche ${estMasque ? 'affichée' : 'masquée'}`);
+  updateCompteur();
+  renderTableau();
+  renderUsersAdmin();
+};
+
+window.toggleInvType = function() {
+  const type = document.getElementById('inv-type').value;
+  document.getElementById('inv-existante').style.display = type === 'existante' ? 'block' : 'none';
+  document.getElementById('inv-nouvelle').style.display = type === 'nouvelle' ? 'block' : 'none';
+};
+
 window.genererCode = async function() {
+  const type = document.getElementById('inv-type').value;
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let code = 'PdN-';
   for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
+
+  let ficheId = null;
+  let nomPdn = '';
+
+  if (type === 'existante') {
+    ficheId = document.getElementById('inv-fiche-select').value;
+    const p = allPromeneurs.find(x => x.id === ficheId);
+    nomPdn = p?.nom || '?';
+    if (!ficheId) { toast('Veuillez choisir un promeneur'); return; }
+  } else {
+    nomPdn = document.getElementById('inv-nouveau-nom').value.trim();
+    if (!nomPdn) { toast('Veuillez saisir un nom'); return; }
+    // Créer la fiche vide
+    const ref = await addDoc(collection(db, 'promeneurs'), {
+      nom: nomPdn, public: 'Jeunesse', secteur: '', referent: '',
+      tel1: '', tel2: '', adresse: '', email: '', rsLien: '',
+      site: '', gps: '', lat: '', lng: '', dateMaj: serverTimestamp()
+    });
+    ficheId = ref.id;
+    allPromeneurs.push({ id: ficheId, nom: nomPdn, public: 'Jeunesse' });
+    renderTableau();
+  }
+
   await setDoc(doc(db, 'invitations', code), {
     used: false,
+    ficheId,
+    nomPdn,
     createdAt: serverTimestamp(),
     createdBy: currentUser.uid
   });
-  toast(`Code généré : ${code}`);
-  renderAdmin();
+
+  // Afficher le résultat
+  document.getElementById('inv-code-affiche').textContent = code;
+  document.getElementById('inv-message-affiche').textContent =
+    type === 'existante'
+      ? `À communiquer à ${nomPdn} pour qu'il crée son compte sur l'application.`
+      : `Fiche créée pour ${nomPdn}. Communiquez ce code pour qu'il accède à sa fiche.`;
+  document.getElementById('inv-resultat').style.display = 'block';
+
+  renderInvitations();
 };
 
 window.supprimerCode = async function(id) {
