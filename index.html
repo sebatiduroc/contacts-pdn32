@@ -88,7 +88,8 @@ nav button {
 }
 nav button:hover { color: var(--bleu-clair); }
 nav button.active {
-  color: var(--bleu);
+  color: var(--blanc);
+  background: var(--bleu);
   border-bottom-color: var(--or);
 }
 
@@ -1116,7 +1117,7 @@ function renderTableau() {
     const rs = rsLink(p.rsLien);
     const email = p.email ? `<a href="mailto:${p.email}">${p.email}</a>` : '—';
     let html = `
-      <td class="td-nom" onclick="ouvrirFiche(${i})">${p.nom || '—'}</td>
+      <td class="td-nom" onclick="ouvrirFiche(${i})">${p.nom || '—'}${p.masque ? ' <span style="color:var(--rouge);font-size:0.78rem;font-weight:400">(masqué)</span>' : ''}</td>
       <td>${badgePublic(p.public)}</td>
       <td>${p.secteur || '—'}</td>
       <td>${tels || '—'}</td>
