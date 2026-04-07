@@ -617,6 +617,7 @@ td a:hover { text-decoration: underline; }
           <th>Secteur</th>
           <th>Téléphone</th>
           <th>Email</th>
+          <th>Adresse</th>
           <th>Réseau social</th>
           <th>Référent CAF</th>
           <th id="th-dates" style="display:none">Dernière vérif.</th>
@@ -1093,7 +1094,7 @@ function getFiltered() {
   const ref = document.getElementById('filtre-referent').value;
   return allPromeneurs.filter(p => {
     // Masquer les fiches masquées sauf pour leur proprio et le coordinateur
-    if (p.masque && !isCoordinateur && currentUserData?.id !== p.id) return false;
+    if (p.masque && !isCoordinateur && (!currentUserData || currentUserData.id !== p.id)) return false;
     if (nom && !p.nom?.toLowerCase().includes(nom) &&
         !p.email?.toLowerCase().includes(nom) &&
         !p.secteur?.toLowerCase().includes(nom)) return false;
@@ -1120,6 +1121,7 @@ function renderTableau() {
       <td>${p.secteur || '—'}</td>
       <td>${tels || '—'}</td>
       <td>${email}</td>
+      <td style="font-size:0.82rem;white-space:pre-line">${p.adresse || '—'}</td>
       <td>${rs}</td>
       <td>${p.referent || '—'}</td>
     `;
@@ -1510,11 +1512,11 @@ async function renderUsersAdmin() {
       <span class="nom">${p.nom || '—'}${p.masque ? ' <em style="font-size:0.75rem;color:var(--rouge)">(masquée)</em>' : ''}</span>
       ${badgePublic(p.public)}
       <span style="color:var(--gris-texte);font-size:0.8rem">${p.email || 'pas de compte'}</span>
-      <div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap">
-        <button class="btn btn-secondary btn-sm" onclick="ouvrirEdit('${p.id}')">✏️ Éditer</button>
-        <button class="btn ${masqueBtnClass} btn-sm" onclick="basculerMasque('${p.id}', ${!!p.masque})">${masqueBtnLabel}</button>
-        ${p.uid ? `<button class="btn btn-danger btn-sm" onclick="desactiverCompte('${p.id}', '${p.uid}')">🚫 Désactiver</button>` : ''}
-        <button class="btn btn-danger btn-sm" onclick="supprimerFiche('${p.id}')">🗑️ Supprimer</button>
+      <div style="margin-left:auto;display:flex;gap:5px;flex-wrap:nowrap">
+        <button class="btn btn-secondary btn-sm" style="font-size:0.72rem;padding:5px 8px" onclick="ouvrirEdit('${p.id}')">✏️</button>
+        <button class="btn ${masqueBtnClass} btn-sm" style="font-size:0.72rem;padding:5px 8px" onclick="basculerMasque('${p.id}', ${!!p.masque})">${p.masque ? '👁️' : '🙈'}</button>
+        ${p.uid ? `<button class="btn btn-danger btn-sm" style="font-size:0.72rem;padding:5px 8px" title="Désactiver le compte" onclick="desactiverCompte('${p.id}', '${p.uid}')">🔒</button>` : ''}
+        <button class="btn btn-danger btn-sm" style="font-size:0.72rem;padding:5px 8px" onclick="supprimerFiche('${p.id}')">🗑️</button>
       </div>
     `;
     list.appendChild(div);
