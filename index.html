@@ -631,7 +631,7 @@ td a:hover { text-decoration: underline; }
     <button class="btn btn-secondary btn-sm" onclick="ficheNav(1)" id="btn-next">Suivant ▶</button>
     <span id="fiche-counter" style="font-size:0.85rem;color:var(--gris-texte)"></span>
   </div>
-  <div class="fiche-container" id="fiche-content"></div>
+  <div id="fiche-content"></div>
 </div>
 
 <!-- CARTE -->
@@ -1093,6 +1093,7 @@ function renderFiche() {
   }
 
   document.getElementById('fiche-content').innerHTML = `
+    <div class="fiche-container">
     <div class="fiche-header">
       <div class="fiche-header-left">
         <h2>${p.nom || '—'}</h2>
@@ -1136,6 +1137,7 @@ function renderFiche() {
         </div>` : ''}
       </div>
       ${datesHtml}
+    </div>
     </div>`;
 }
 
