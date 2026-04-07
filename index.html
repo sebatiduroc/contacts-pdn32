@@ -626,7 +626,7 @@ td a:hover { text-decoration: underline; }
 <!-- FICHE -->
 <div id="screen-fiche" class="screen">
   <div class="fiche-nav">
-    <button class="btn btn-secondary btn-sm" onclick="showTab('tableau')">← Retour</button>
+    <button class="btn btn-secondary btn-sm" onclick="showTab('tableau')">📋 Liste des PdN</button>
     <button class="btn btn-secondary btn-sm" onclick="ficheNav(-1)" id="btn-prev">◀ Précédent</button>
     <button class="btn btn-secondary btn-sm" onclick="ficheNav(1)" id="btn-next">Suivant ▶</button>
     <span id="fiche-counter" style="font-size:0.85rem;color:var(--gris-texte)"></span>
@@ -965,6 +965,8 @@ onAuthStateChanged(auth, async (user) => {
 
     populateFiltres();
     renderTableau();
+    renderMaFiche();
+    showTab('ma-fiche');
     // Horodater la connexion comme dernière vérification
     if (currentUserData) {
       updateDoc(doc(db, 'promeneurs', currentUserData.id), { dateVerif: serverTimestamp() });
@@ -1051,10 +1053,13 @@ window.filtrerTableau = function() { renderTableau(); };
 
 // ===== FICHE =====
 window.ouvrirFiche = function(index) {
+  ficheList = getFiltered();
   ficheIndex = index;
-  ficheList = getFiltered(); // s'assurer que ficheList est à jour
   document.getElementById('tab-fiche').style.display = 'inline-block';
-  showTab('fiche');
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById('screen-fiche').classList.add('active');
+  document.getElementById('tab-fiche').classList.add('active');
   renderFiche();
 };
 
