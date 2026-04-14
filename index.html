@@ -921,6 +921,7 @@ let routeLayer = null;
 let routePoints = [];
 let isCoordinateur = false;
 let isInvite = false;
+let isInscriptionEnCours = false;
 
 // ===== UTILITAIRES =====
 function toast(msg, duree = 3000) {
@@ -1025,18 +1026,27 @@ window.doRegister = async function() {
   }
 
   try {
+    // 1. Créer le compte Auth
     const cred = await createUserWithEmailAndPassword(auth, email, pwd);
-    // Marquer le code comme utilisé
-    await updateDoc(codeRef, { used: true, usedBy: email, usedAt: serverTimestamp() });
-    // Créer une fiche vide liée à l'uid
+    const uid = cred.user.uid;
     const ficheId = codeSnap.data().ficheId || null;
+
+    // 2. Écrire dans Firestore immédiatement, avant que onAuthStateChanged
+    //    ne redirige vers l'app (la création de compte connecte automatiquement)
+    isInscriptionEnCours = true;
+    await updateDoc(codeRef, { used: true, usedBy: email, usedAt: serverTimestamp() });
     if (ficheId) {
-      await updateDoc(doc(db, 'promeneurs', ficheId), { uid: cred.user.uid, email: email });
+      await updateDoc(doc(db, 'promeneurs', ficheId), { uid, email });
     }
+    isInscriptionEnCours = false;
+
     showOk('ok-inscription', 'Compte créé ! Vous allez être connecté…');
+    // 3. Déclencher manuellement le chargement de l'app
+    setTimeout(() => onConnexionReussie(cred.user), 800);
   } catch(e) {
+    isInscriptionEnCours = false;
     if (e.code === 'auth/email-already-in-use') showErr('err-inscription', 'Cet email est déjà utilisé.');
-    else showErr('err-inscription', 'Erreur lors de la création du compte.');
+    else showErr('err-inscription', 'Erreur lors de la création du compte : ' + e.message);
   }
 };
 
@@ -1085,38 +1095,43 @@ window.accederEnInvite = async function() {
 };
 
 // ===== ÉTAT AUTH =====
+async function onConnexionReussie(user) {
+  loader(true);
+  currentUser = user;
+  const q = query(collection(db, 'promeneurs'), orderBy('nom'));
+  const snap = await getDocs(q);
+  allPromeneurs = [];
+  snap.forEach(d => allPromeneurs.push({ id: d.id, ...d.data() }));
+  currentUserData = allPromeneurs.find(p => p.uid === user.uid) || null;
+  isCoordinateur = currentUserData?.public === 'Coordinateur';
+
+  document.getElementById('screen-login').style.display = 'none';
+  document.getElementById('screen-app').style.display = 'block';
+  document.getElementById('main-nav').style.display = 'flex';
+  document.getElementById('user-info').style.display = 'flex';
+  document.getElementById('user-name').textContent = currentUserData?.nom || user.email;
+
+  if (isCoordinateur) {
+    document.getElementById('tab-admin').style.display = 'inline-block';
+    document.getElementById('th-dates').style.display = '';
+  }
+
+  populateFiltres();
+  renderTableau();
+  renderMaFiche();
+  showTab('ma-fiche');
+  updateCompteur();
+  if (currentUserData) {
+    updateDoc(doc(db, 'promeneurs', currentUserData.id), { dateVerif: serverTimestamp() });
+  }
+  loader(false);
+}
+
 onAuthStateChanged(auth, async (user) => {
   if (isInvite) return; // mode invité actif, ignorer
+  if (isInscriptionEnCours) return; // écriture Firestore post-inscription en cours, patienter
   if (user) {
-    loader(true);
-    currentUser = user;
-    const q = query(collection(db, 'promeneurs'), orderBy('nom'));
-    const snap = await getDocs(q);
-    allPromeneurs = [];
-    snap.forEach(d => allPromeneurs.push({ id: d.id, ...d.data() }));
-    currentUserData = allPromeneurs.find(p => p.uid === user.uid) || null;
-    isCoordinateur = currentUserData?.public === 'Coordinateur';
-
-    document.getElementById('screen-login').style.display = 'none';
-    document.getElementById('screen-app').style.display = 'block';
-    document.getElementById('main-nav').style.display = 'flex';
-    document.getElementById('user-info').style.display = 'flex';
-    document.getElementById('user-name').textContent = currentUserData?.nom || user.email;
-
-    if (isCoordinateur) {
-      document.getElementById('tab-admin').style.display = 'inline-block';
-      document.getElementById('th-dates').style.display = '';
-    }
-
-    populateFiltres();
-    renderTableau();
-    renderMaFiche();
-    showTab('ma-fiche');
-    updateCompteur();
-    if (currentUserData) {
-      updateDoc(doc(db, 'promeneurs', currentUserData.id), { dateVerif: serverTimestamp() });
-    }
-    loader(false);
+    await onConnexionReussie(user);
   } else {
     // Pas de user connecté ET pas en mode invité → écran login
     if (!isInvite) {
