@@ -1011,38 +1011,31 @@ window.doLogin = async function() {
 window.doRegister = async function() {
   hideErr('err-inscription');
   hideErr('ok-inscription');
-  const code = document.getElementById('reg-code').value.trim().toUpperCase();
+  const code = document.getElementById('reg-code').value.trim();  // ← plus de toUpperCase()
   const email = document.getElementById('reg-email').value.trim();
   const pwd = document.getElementById('reg-pwd').value;
   if (!code || !email || !pwd) { showErr('err-inscription', 'Veuillez remplir tous les champs.'); return; }
   if (pwd.length < 6) { showErr('err-inscription', 'Le mot de passe doit faire au moins 6 caractères.'); return; }
 
-let codeSnap;
-try {
-  const codeRef = doc(db, 'invitations', code);
-  console.log('=== INSCRIPTION DEBUG ===');
-  console.log('code cherché:', JSON.stringify(code));
-  console.log('path:', codeRef.path);
-  codeSnap = await getDoc(codeRef);
-  console.log('exists:', codeSnap.exists());
-  console.log('data:', codeSnap.data());
-} catch(e) {
-  console.error('Erreur getDoc:', e);
-  showErr('err-inscription', 'Impossible de vérifier le code. Contactez le coordinateur.');
-  return;
-}
+  let codeSnap;
+  try {
+    const codeRef = doc(db, 'invitations', code);
+    codeSnap = await getDoc(codeRef);
+  } catch(e) {
+    showErr('err-inscription', 'Impossible de vérifier le code. Contactez le coordinateur.');
+    return;
+  }
 
-  // Vérifier le code
- 
+  if (!codeSnap.exists() || codeSnap.data().used) {
+    showErr('err-inscription', 'Code d\'invitation invalide ou déjà utilisé.');
+    return;
+  }
 
   try {
-    // 1. Créer le compte Auth
     const cred = await createUserWithEmailAndPassword(auth, email, pwd);
     const uid = cred.user.uid;
     const ficheId = codeSnap.data().ficheId || null;
 
-    // 2. Écrire dans Firestore immédiatement, avant que onAuthStateChanged
-    //    ne redirige vers l'app (la création de compte connecte automatiquement)
     isInscriptionEnCours = true;
     await updateDoc(codeRef, { used: true, usedBy: email, usedAt: serverTimestamp() });
     if (ficheId) {
@@ -1051,7 +1044,6 @@ try {
     isInscriptionEnCours = false;
 
     showOk('ok-inscription', 'Compte créé ! Vous allez être connecté…');
-    // 3. Déclencher manuellement le chargement de l'app
     setTimeout(() => onConnexionReussie(cred.user), 800);
   } catch(e) {
     isInscriptionEnCours = false;
@@ -1059,6 +1051,7 @@ try {
     else showErr('err-inscription', 'Erreur lors de la création du compte : ' + e.message);
   }
 };
+
 
 window.logout = async function() {
   if (isInvite) {
