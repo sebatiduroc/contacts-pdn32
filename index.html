@@ -1033,12 +1033,7 @@ try {
 }
 
   // Vérifier le code
-  const codeRef = doc(db, 'invitations', code);
-  const codeSnap = await getDoc(codeRef);
-  if (!codeSnap.exists() || codeSnap.data().used) {
-    showErr('err-inscription', 'Code d\'invitation invalide ou déjà utilisé.');
-    return;
-  }
+ 
 
   try {
     // 1. Créer le compte Auth
