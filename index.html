@@ -522,6 +522,44 @@ td a:hover { text-decoration: underline; }
 /* adresse avec sauts de ligne */
 .fiche-field-value.pre { white-space: pre-line; }
 
+/* ===== TOOLTIP SURVOL CARTE ===== */
+#map-hover-card {
+  position: fixed;
+  z-index: 1100;
+  pointer-events: none;
+  background: var(--blanc);
+  border-radius: 10px;
+  box-shadow: var(--ombre-forte);
+  border-left: 4px solid var(--bleu-clair);
+  padding: 14px 16px;
+  min-width: 220px;
+  max-width: 300px;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  font-size: 0.88rem;
+  color: var(--bleu);
+}
+#map-hover-card.visible { opacity: 1; }
+#map-hover-card .hc-nom {
+  font-family: 'Libre Baskerville', serif;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--bleu);
+  margin-bottom: 6px;
+  line-height: 1.25;
+}
+#map-hover-card .hc-row {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+  margin-bottom: 4px;
+  font-size: 0.82rem;
+  color: var(--gris-texte);
+}
+#map-hover-card .hc-row span:first-child { opacity: 0.7; flex-shrink: 0; }
+#map-hover-card .hc-row a { color: var(--bleu-clair); text-decoration: none; }
+#map-hover-card .hc-badges { margin-bottom: 8px; }
+
 /* ===== RESPONSIVE ===== */
 @media (max-width: 600px) {
   main { padding: 14px; }
@@ -541,6 +579,7 @@ td a:hover { text-decoration: underline; }
 </div>
 
 <div id="toast"></div>
+<div id="map-hover-card"></div>
 
 <!-- EN-TÊTE -->
 <header>
@@ -1676,6 +1715,54 @@ async function initCarte() {
   updateMarkers();
 }
 
+// ===== HOVER CARD CARTE =====
+const hoverCard = document.getElementById('map-hover-card');
+let hoverCardTimeout = null;
+
+function showHoverCard(p, mouseEvent) {
+  const tels = [p.tel1, p.tel2].filter(Boolean);
+  const telHtml = tels.length
+    ? `<div class="hc-row"><span>📞</span><span>${tels.map(t => `<a href="tel:${t}">${t}</a>`).join(' / ')}</span></div>`
+    : '';
+  const emailHtml = p.email
+    ? `<div class="hc-row"><span>✉️</span><span><a href="mailto:${p.email}">${p.email}</a></span></div>`
+    : '';
+  const secteurHtml = p.secteur
+    ? `<div class="hc-row"><span>📍</span><span>${p.secteur}</span></div>`
+    : '';
+  const referentHtml = p.referent
+    ? `<div class="hc-row"><span>👤</span><span>${p.referent}</span></div>`
+    : '';
+
+  hoverCard.innerHTML = `
+    <div class="hc-nom">${p.nom || '—'}</div>
+    <div class="hc-badges">${badgePublic(p.public)}</div>
+    ${secteurHtml}${telHtml}${emailHtml}${referentHtml}
+  `;
+  positionHoverCard(mouseEvent);
+  hoverCard.classList.add('visible');
+}
+
+function positionHoverCard(e) {
+  const margin = 14;
+  const cw = hoverCard.offsetWidth || 240;
+  const ch = hoverCard.offsetHeight || 120;
+  let x = e.clientX + margin;
+  let y = e.clientY + margin;
+  if (x + cw > window.innerWidth - margin) x = e.clientX - cw - margin;
+  if (y + ch > window.innerHeight - margin) y = e.clientY - ch - margin;
+  hoverCard.style.left = x + 'px';
+  hoverCard.style.top = y + 'px';
+}
+
+function hideHoverCard() {
+  hoverCard.classList.remove('visible');
+}
+
+document.addEventListener('mousemove', e => {
+  if (hoverCard.classList.contains('visible')) positionHoverCard(e);
+});
+
 function updateMarkers() {
   mapMarkers.forEach(m => mapInstance.removeLayer(m));
   mapMarkers = [];
@@ -1690,6 +1777,8 @@ function updateMarkers() {
       const marker = L.marker([parseFloat(lat), parseFloat(lng)]);
       marker.bindPopup(`<strong>${p.nom}</strong><br>${badgePublic(p.public)}<br>${p.secteur || ''}`);
       marker.on('click', () => selectionnerPointRoute({ ...p, lat, lng }, marker));
+      marker.on('mouseover', e => showHoverCard(p, e.originalEvent));
+      marker.on('mouseout', hideHoverCard);
       marker.addTo(mapInstance);
       mapMarkers.push(marker);
     });
