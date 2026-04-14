@@ -1071,6 +1071,8 @@ window.accederEnInvite = async function() {
   document.getElementById('user-info').style.display = 'flex';
   document.getElementById('user-name').textContent = '👁️ Invité';
   document.getElementById('tab-ma-fiche').style.display = 'none';
+  document.getElementById('tab-admin').style.display = 'none';
+  document.getElementById('th-dates').style.display = 'none';
   loader(false);
   populateFiltres();
   renderTableau();
@@ -1118,7 +1120,9 @@ onAuthStateChanged(auth, async (user) => {
   } else {
     // Pas de user connecté ET pas en mode invité → écran login
     if (!isInvite) {
-      currentUser = null; currentUserData = null;
+      currentUser = null; currentUserData = null; isCoordinateur = false;
+      document.getElementById('tab-admin').style.display = 'none';
+      document.getElementById('th-dates').style.display = 'none';
       document.getElementById('screen-login').style.display = 'flex';
       document.getElementById('screen-app').style.display = 'none';
       document.getElementById('main-nav').style.display = 'none';
