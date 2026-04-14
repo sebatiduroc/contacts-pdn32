@@ -1017,6 +1017,21 @@ window.doRegister = async function() {
   if (!code || !email || !pwd) { showErr('err-inscription', 'Veuillez remplir tous les champs.'); return; }
   if (pwd.length < 6) { showErr('err-inscription', 'Le mot de passe doit faire au moins 6 caractères.'); return; }
 
+let codeSnap;
+try {
+  const codeRef = doc(db, 'invitations', code);
+  console.log('=== INSCRIPTION DEBUG ===');
+  console.log('code cherché:', JSON.stringify(code));
+  console.log('path:', codeRef.path);
+  codeSnap = await getDoc(codeRef);
+  console.log('exists:', codeSnap.exists());
+  console.log('data:', codeSnap.data());
+} catch(e) {
+  console.error('Erreur getDoc:', e);
+  showErr('err-inscription', 'Impossible de vérifier le code. Contactez le coordinateur.');
+  return;
+}
+
   // Vérifier le code
   const codeRef = doc(db, 'invitations', code);
   const codeSnap = await getDoc(codeRef);
