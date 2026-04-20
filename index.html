@@ -560,6 +560,66 @@ td a:hover { text-decoration: underline; }
 #map-hover-card .hc-row a { color: var(--bleu-clair); text-decoration: none; }
 #map-hover-card .hc-badges { margin-bottom: 8px; }
 
+/* ===== LIENS UTILES ===== */
+.liens-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+  margin-top: 8px;
+}
+.lien-card {
+  background: var(--blanc);
+  border-radius: 10px;
+  box-shadow: var(--ombre);
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border-left: 4px solid var(--bleu-clair);
+  position: relative;
+}
+.lien-card .lien-titre {
+  font-family: 'Libre Baskerville', serif;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--bleu);
+}
+.lien-card .lien-desc {
+  font-size: 0.85rem;
+  color: var(--gris-texte);
+  line-height: 1.4;
+}
+.lien-card .lien-url a {
+  font-size: 0.85rem;
+  color: var(--bleu-clair);
+  text-decoration: none;
+  word-break: break-all;
+}
+.lien-card .lien-url a:hover { text-decoration: underline; }
+.lien-card .lien-actions {
+  display: flex; gap: 6px;
+  margin-top: 8px;
+}
+.lien-card .lien-categorie {
+  position: absolute; top: 12px; right: 14px;
+  font-size: 0.72rem;
+  background: var(--gris);
+  color: var(--gris-texte);
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+.liens-empty {
+  text-align: center;
+  color: var(--gris-texte);
+  padding: 40px;
+  font-size: 0.95rem;
+}
+
+/* Modal Lien */
+#modal-lien .modal { max-width: 500px; }
+
 /* ===== RESPONSIVE ===== */
 @media (max-width: 600px) {
   main { padding: 14px; }
@@ -596,6 +656,7 @@ td a:hover { text-decoration: underline; }
   <button onclick="showTab('fiche')" id="tab-fiche" style="display:none">👤 Fiche</button>
   <button onclick="showTab('carte')" id="tab-carte">🗺️ Carte</button>
   <button onclick="showTab('ma-fiche')" id="tab-ma-fiche">✏️ Ma fiche</button>
+  <button onclick="showTab('liens')" id="tab-liens" style="display:none">🔗 Liens utiles</button>
   <button onclick="showTab('admin')" id="tab-admin" style="display:none">⚙️ Admin</button>
 </nav>
 
@@ -722,6 +783,16 @@ td a:hover { text-decoration: underline; }
 <!-- MA FICHE -->
 <div id="screen-ma-fiche" class="screen">
   <div id="ma-fiche-content"></div>
+</div>
+
+<!-- LIENS UTILES -->
+<div id="screen-liens" class="screen">
+  <div class="toolbar" id="liens-toolbar-admin" style="display:none">
+    <button class="btn btn-primary btn-sm" onclick="ouvrirModalLien()">＋ Ajouter un lien</button>
+  </div>
+  <div id="liens-grid-container">
+    <div class="liens-empty">Chargement…</div>
+  </div>
 </div>
 
 <!-- ADMIN -->
@@ -882,12 +953,46 @@ td a:hover { text-decoration: underline; }
   </div>
 </div>
 
+<!-- ===== MODAL LIEN ===== -->
+<div class="modal-overlay" id="modal-lien">
+  <div class="modal" style="max-width:500px">
+    <div class="modal-header">
+      <h3 id="modal-lien-title">Ajouter un lien</h3>
+      <button class="modal-close" onclick="closeModal('modal-lien')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="lien-edit-id">
+      <div class="form-group">
+        <label>Titre *</label>
+        <input type="text" id="lien-titre" placeholder="ex: Site national PdN">
+      </div>
+      <div class="form-group">
+        <label>URL *</label>
+        <input type="text" id="lien-url" placeholder="https://…">
+      </div>
+      <div class="form-group">
+        <label>Description</label>
+        <textarea id="lien-desc" rows="2" placeholder="Courte description (optionnel)"></textarea>
+      </div>
+      <div class="form-group">
+        <label>Catégorie</label>
+        <input type="text" id="lien-categorie" placeholder="ex: Formation, Ressources…">
+      </div>
+      <div id="err-lien" class="msg-error"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-lien')">Annuler</button>
+      <button class="btn btn-primary" onclick="sauvegarderLien()">💾 Enregistrer</button>
+    </div>
+  </div>
+</div>
+
 <!-- Firebase -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { getFirestore, collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, addDoc, query, orderBy, serverTimestamp, Timestamp }
+import { getFirestore, collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, addDoc, query, orderBy, serverTimestamp, Timestamp, onSnapshot }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 // ===== CONFIG FIREBASE =====
@@ -1060,6 +1165,7 @@ window.logout = async function() {
     document.getElementById('main-nav').style.display = 'none';
     document.getElementById('user-info').style.display = 'none';
     document.getElementById('tab-ma-fiche').style.display = '';
+    document.getElementById('tab-liens').style.display = 'none';
     return;
   }
   await signOut(auth);
@@ -1107,6 +1213,11 @@ async function onConnexionReussie(user) {
   currentUserData = allPromeneurs.find(p => p.uid === user.uid) || null;
   isCoordinateur = currentUserData?.public === 'Coordinateur';
 
+  // Synchroniser roles/{uid} au cas où il manquerait
+  if (isCoordinateur) {
+    await setDoc(doc(db, 'roles', user.uid), { coordinateur: true }, { merge: true });
+  }
+
   document.getElementById('screen-login').style.display = 'none';
   document.getElementById('screen-app').style.display = 'block';
   document.getElementById('main-nav').style.display = 'flex';
@@ -1117,6 +1228,7 @@ async function onConnexionReussie(user) {
     document.getElementById('tab-admin').style.display = 'inline-block';
     document.getElementById('th-dates').style.display = '';
   }
+  document.getElementById('tab-liens').style.display = 'inline-block';
 
   populateFiltres();
   renderTableau();
@@ -1139,6 +1251,7 @@ onAuthStateChanged(auth, async (user) => {
     if (!isInvite) {
       currentUser = null; currentUserData = null; isCoordinateur = false;
       document.getElementById('tab-admin').style.display = 'none';
+      document.getElementById('tab-liens').style.display = 'none';
       document.getElementById('th-dates').style.display = 'none';
       document.getElementById('screen-login').style.display = 'flex';
       document.getElementById('screen-app').style.display = 'none';
@@ -1168,6 +1281,7 @@ window.showTab = function(tab) {
   if (tab === 'carte') initCarte();
   if (tab === 'ma-fiche') renderMaFiche();
   if (tab === 'admin') renderAdmin();
+  if (tab === 'liens') renderLiens();
 };
 
 // ===== TABLEAU =====
@@ -2041,6 +2155,9 @@ window.desactiverCompte = async function(ficheId, uid) {
   if (!confirm(`Désactiver le compte de ${p?.nom || 'ce promeneur'} ? Il ne pourra plus se connecter.`)) return;
   // On ne peut pas désactiver Firebase Auth depuis le client — on marque dans Firestore
   await updateDoc(doc(db, 'promeneurs', ficheId), { desactive: true, uid: null });
+  if (uid) {
+    try { await deleteDoc(doc(db, 'roles', uid)); } catch(_) {}
+  }
   const idx = allPromeneurs.findIndex(x => x.id === ficheId);
   if (idx >= 0) allPromeneurs[idx].desactive = true;
   toast(`Compte de ${p?.nom} marqué désactivé. Supprimez aussi le compte dans la console Firebase Auth.`);
@@ -2066,8 +2183,124 @@ window.transfertCoordinateur = async function() {
   if (!confirm(`Transférer le rôle de coordinateur à ${nouveau?.nom} ? Vous perdrez vos droits admin.`)) return;
   await updateDoc(doc(db, 'promeneurs', newId), { public: 'Coordinateur' });
   await updateDoc(doc(db, 'promeneurs', currentUserData.id), { public: 'Jeunesse' });
+  // Mettre à jour la collection roles
+  if (nouveau?.uid) {
+    await setDoc(doc(db, 'roles', nouveau.uid), { coordinateur: true });
+  }
+  await deleteDoc(doc(db, 'roles', currentUser.uid));
   toast('Rôle transféré. Rechargement…');
   setTimeout(() => location.reload(), 1500);
+};
+
+// ===== LIENS UTILES =====
+let allLiens = [];
+
+async function renderLiens() {
+  const container = document.getElementById('liens-grid-container');
+  const toolbarAdmin = document.getElementById('liens-toolbar-admin');
+
+  // Toolbar visible uniquement pour le coordinateur
+  toolbarAdmin.style.display = isCoordinateur ? 'flex' : 'none';
+
+  container.innerHTML = '<div class="liens-empty">Chargement…</div>';
+  try {
+    const snap = await getDocs(query(collection(db, 'liens'), orderBy('titre')));
+    allLiens = [];
+    snap.forEach(d => allLiens.push({ id: d.id, ...d.data() }));
+  } catch(e) {
+    container.innerHTML = '<div class="liens-empty">Erreur de chargement des liens.</div>';
+    return;
+  }
+
+  if (allLiens.length === 0) {
+    container.innerHTML = '<div class="liens-empty">Aucun lien enregistré pour l\'instant.</div>';
+    return;
+  }
+
+  const grid = document.createElement('div');
+  grid.className = 'liens-grid';
+  allLiens.forEach(l => {
+    const card = document.createElement('div');
+    card.className = 'lien-card';
+    const urlDisplay = l.url ? `<div class="lien-url"><a href="${l.url}" target="_blank" rel="noopener">🔗 ${l.url}</a></div>` : '';
+    const descDisplay = l.description ? `<div class="lien-desc">${l.description}</div>` : '';
+    const catDisplay = l.categorie ? `<span class="lien-categorie">${l.categorie}</span>` : '';
+    const adminBtns = isCoordinateur ? `
+      <div class="lien-actions">
+        <button class="btn btn-secondary btn-sm" onclick="ouvrirModalLien('${l.id}')">✏️ Modifier</button>
+        <button class="btn btn-danger btn-sm" onclick="supprimerLien('${l.id}')">🗑️</button>
+      </div>` : '';
+    card.innerHTML = `
+      ${catDisplay}
+      <div class="lien-titre">${l.titre || '—'}</div>
+      ${descDisplay}
+      ${urlDisplay}
+      ${adminBtns}
+    `;
+    grid.appendChild(card);
+  });
+  container.innerHTML = '';
+  container.appendChild(grid);
+}
+
+window.ouvrirModalLien = function(id = null) {
+  document.getElementById('err-lien').style.display = 'none';
+  if (id) {
+    const l = allLiens.find(x => x.id === id);
+    if (!l) return;
+    document.getElementById('modal-lien-title').textContent = 'Modifier le lien';
+    document.getElementById('lien-edit-id').value = id;
+    document.getElementById('lien-titre').value = l.titre || '';
+    document.getElementById('lien-url').value = l.url || '';
+    document.getElementById('lien-desc').value = l.description || '';
+    document.getElementById('lien-categorie').value = l.categorie || '';
+  } else {
+    document.getElementById('modal-lien-title').textContent = 'Ajouter un lien';
+    document.getElementById('lien-edit-id').value = '';
+    document.getElementById('lien-titre').value = '';
+    document.getElementById('lien-url').value = '';
+    document.getElementById('lien-desc').value = '';
+    document.getElementById('lien-categorie').value = '';
+  }
+  document.getElementById('modal-lien').classList.add('open');
+};
+
+window.sauvegarderLien = async function() {
+  const titre = document.getElementById('lien-titre').value.trim();
+  const url = document.getElementById('lien-url').value.trim();
+  const description = document.getElementById('lien-desc').value.trim();
+  const categorie = document.getElementById('lien-categorie').value.trim();
+  const errEl = document.getElementById('err-lien');
+
+  if (!titre) { errEl.textContent = 'Le titre est obligatoire.'; errEl.style.display = 'block'; return; }
+  if (!url) { errEl.textContent = "L'URL est obligatoire."; errEl.style.display = 'block'; return; }
+
+  const editId = document.getElementById('lien-edit-id').value;
+  const data = { titre, url, description, categorie, dateMaj: serverTimestamp() };
+
+  try {
+    if (editId) {
+      await updateDoc(doc(db, 'liens', editId), data);
+      toast('Lien mis à jour');
+    } else {
+      data.createdAt = serverTimestamp();
+      await addDoc(collection(db, 'liens'), data);
+      toast('Lien ajouté');
+    }
+    closeModal('modal-lien');
+    renderLiens();
+  } catch(e) {
+    errEl.textContent = 'Erreur : ' + e.message;
+    errEl.style.display = 'block';
+  }
+};
+
+window.supprimerLien = async function(id) {
+  const l = allLiens.find(x => x.id === id);
+  if (!confirm(`Supprimer le lien "${l?.titre}" ?`)) return;
+  await deleteDoc(doc(db, 'liens', id));
+  toast('Lien supprimé');
+  renderLiens();
 };
 
 // ===== EXPORT PDF =====
