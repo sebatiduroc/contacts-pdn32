@@ -72,7 +72,9 @@ nav {
   gap: 0;
   padding: 0 24px;
   overflow-x: auto;
+  scrollbar-width: none;
 }
+nav::-webkit-scrollbar { display: none; }
 nav button {
   background: none; border: none;
   padding: 14px 20px;
@@ -658,7 +660,7 @@ td a:hover { text-decoration: underline; }
   <h1>Promeneurs du Net <span>32</span><span id="compteur-pdn" style="font-size:0.75rem;font-weight:300;opacity:0.7;margin-left:10px"></span></h1>
   <div id="user-info" style="display:none">
     <span id="user-name"></span>
-    <button class="btn-logout" id="btn-logout" onclick="logout()" style="font-size:0.72rem;padding:4px 9px">Déco.</button>
+    <button class="btn-logout" id="btn-logout" onclick="logout()" style="font-size:0.72rem;padding:4px 9px">LogOut</button>
   </div>
 </header>
 
@@ -1200,6 +1202,7 @@ window.accederEnInvite = async function() {
   document.getElementById('main-nav').style.display = 'flex';
   document.getElementById('user-info').style.display = 'flex';
   document.getElementById('user-name').textContent = '👁️ Invité';
+  document.getElementById('btn-logout').textContent = 'LogIn';
   document.getElementById('tab-ma-fiche').style.display = 'none';
   document.getElementById('tab-admin').style.display = 'none';
   document.getElementById('th-dates').style.display = 'none';
@@ -1235,6 +1238,7 @@ async function onConnexionReussie(user) {
   document.getElementById('main-nav').style.display = 'flex';
   document.getElementById('user-info').style.display = 'flex';
   document.getElementById('user-name').textContent = currentUserData?.nom || user.email;
+  document.getElementById('btn-logout').textContent = 'LogOut';
 
   if (isCoordinateur) {
     document.getElementById('tab-admin').style.display = 'inline-block';
