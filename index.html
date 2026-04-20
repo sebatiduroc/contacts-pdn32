@@ -601,7 +601,8 @@ td a:hover { text-decoration: underline; }
   margin-top: 8px;
 }
 .lien-card .lien-categorie {
-  position: absolute; top: 12px; right: 14px;
+  display: inline-block;
+  align-self: flex-start;
   font-size: 0.72rem;
   background: var(--gris);
   color: var(--gris-texte);
@@ -609,6 +610,17 @@ td a:hover { text-decoration: underline; }
   border-radius: 10px;
   font-weight: 600;
   letter-spacing: 0.04em;
+}
+.lien-card.dragging {
+  opacity: 0.4;
+  cursor: grabbing;
+}
+.lien-card.drag-over {
+  border-left-color: var(--or);
+  box-shadow: 0 0 0 2px var(--or);
+}
+.lien-card[draggable="true"] {
+  cursor: grab;
 }
 .liens-empty {
   text-align: center;
@@ -2194,19 +2206,22 @@ window.transfertCoordinateur = async function() {
 
 // ===== LIENS UTILES =====
 let allLiens = [];
+let dragSrcId = null;
 
 async function renderLiens() {
   const container = document.getElementById('liens-grid-container');
   const toolbarAdmin = document.getElementById('liens-toolbar-admin');
-
-  // Toolbar visible uniquement pour le coordinateur
   toolbarAdmin.style.display = isCoordinateur ? 'flex' : 'none';
 
   container.innerHTML = '<div class="liens-empty">Chargement…</div>';
   try {
-    const snap = await getDocs(query(collection(db, 'liens'), orderBy('titre')));
+    const snap = await getDocs(query(collection(db, 'liens'), orderBy('ordre')));
     allLiens = [];
     snap.forEach(d => allLiens.push({ id: d.id, ...d.data() }));
+    // Fallback : si ordre absent, trier par titre
+    if (allLiens.every(l => l.ordre == null)) {
+      allLiens.sort((a, b) => (a.titre || '').localeCompare(b.titre || ''));
+    }
   } catch(e) {
     container.innerHTML = '<div class="liens-empty">Erreur de chargement des liens.</div>';
     return;
@@ -2219,17 +2234,24 @@ async function renderLiens() {
 
   const grid = document.createElement('div');
   grid.className = 'liens-grid';
+
   allLiens.forEach(l => {
     const card = document.createElement('div');
     card.className = 'lien-card';
-    const urlDisplay = l.url ? `<div class="lien-url"><a href="${l.url}" target="_blank" rel="noopener">🔗 ${l.url}</a></div>` : '';
-    const descDisplay = l.description ? `<div class="lien-desc">${l.description}</div>` : '';
-    const catDisplay = l.categorie ? `<span class="lien-categorie">${l.categorie}</span>` : '';
+    card.dataset.id = l.id;
+
+    const catDisplay = l.categorie
+      ? `<span class="lien-categorie">${l.categorie}</span>` : '';
+    const descDisplay = l.description
+      ? `<div class="lien-desc">${l.description}</div>` : '';
+    const urlDisplay = l.url
+      ? `<div class="lien-url"><a href="${l.url}" target="_blank" rel="noopener">🔗 ${l.url}</a></div>` : '';
     const adminBtns = isCoordinateur ? `
       <div class="lien-actions">
         <button class="btn btn-secondary btn-sm" onclick="ouvrirModalLien('${l.id}')">✏️ Modifier</button>
         <button class="btn btn-danger btn-sm" onclick="supprimerLien('${l.id}')">🗑️</button>
       </div>` : '';
+
     card.innerHTML = `
       ${catDisplay}
       <div class="lien-titre">${l.titre || '—'}</div>
@@ -2237,10 +2259,50 @@ async function renderLiens() {
       ${urlDisplay}
       ${adminBtns}
     `;
+
+    if (isCoordinateur) {
+      card.setAttribute('draggable', 'true');
+      card.addEventListener('dragstart', e => {
+        dragSrcId = l.id;
+        card.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+      });
+      card.addEventListener('dragend', () => {
+        card.classList.remove('dragging');
+        grid.querySelectorAll('.lien-card').forEach(c => c.classList.remove('drag-over'));
+      });
+      card.addEventListener('dragover', e => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        grid.querySelectorAll('.lien-card').forEach(c => c.classList.remove('drag-over'));
+        if (l.id !== dragSrcId) card.classList.add('drag-over');
+      });
+      card.addEventListener('drop', async e => {
+        e.preventDefault();
+        if (dragSrcId === l.id) return;
+        // Réordonner allLiens en mémoire
+        const srcIdx = allLiens.findIndex(x => x.id === dragSrcId);
+        const dstIdx = allLiens.findIndex(x => x.id === l.id);
+        const [moved] = allLiens.splice(srcIdx, 1);
+        allLiens.splice(dstIdx, 0, moved);
+        // Sauvegarder l'ordre dans Firestore
+        await sauvegarderOrdre();
+        renderLiens();
+      });
+    }
+
     grid.appendChild(card);
   });
+
   container.innerHTML = '';
   container.appendChild(grid);
+}
+
+async function sauvegarderOrdre() {
+  const updates = allLiens.map((l, i) =>
+    updateDoc(doc(db, 'liens', l.id), { ordre: i })
+  );
+  await Promise.all(updates);
 }
 
 window.ouvrirModalLien = function(id = null) {
@@ -2284,6 +2346,7 @@ window.sauvegarderLien = async function() {
       toast('Lien mis à jour');
     } else {
       data.createdAt = serverTimestamp();
+      data.ordre = allLiens.length; // placer en dernier
       await addDoc(collection(db, 'liens'), data);
       toast('Lien ajouté');
     }
