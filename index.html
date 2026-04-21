@@ -2012,7 +2012,7 @@ async function renderInvitations() {
       <span>${inv.used ? '✅ Utilisé par ' + (inv.usedBy || '?') : '⏳ En attente'}</span>
       <span style="color:var(--gris-texte);font-size:0.78rem">${formatDate(inv.createdAt)}</span>
       <button class="btn btn-danger btn-sm" onclick="supprimerCode('${inv.id}')">Supprimer</button>
-    ;
+    `;
     list.appendChild(div);
   });
 }
