@@ -950,6 +950,10 @@ td a:hover { text-decoration: underline; }
   line-height: 1.4;
   white-space: pre-line;
 }
+/* Bouton Modifier dans la modale lecture (mobile admin) */
+#modal-cal-view-footer .btn-modifier {
+  margin-left: 8px;
+}
 </style>
 </head>
 <body>
@@ -2927,7 +2931,10 @@ function dateStr(y, m, d) {
 const MOIS_FR = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
 const JOURS_COURTS = ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
 
-// ===== TOOLTIP SURVOL CALENDRIER =====
+// ===== DÉTECTION SOURIS vs TOUCH =====
+const hasHover = window.matchMedia('(hover: hover)').matches;
+
+// ===== TOOLTIP SURVOL CALENDRIER (desktop uniquement) =====
 function showCalHover(events, x, y) {
   const card = document.getElementById('cal-hover-card');
   card.innerHTML = events.map(ev => `
@@ -3094,16 +3101,31 @@ function makeDayCell(dayNum, ds, otherMonth, todayStr) {
   }
 
   if (!otherMonth) {
-    if (isCoordinateur) {
-      cell.classList.add('admin-editable');
-      cell.addEventListener('click', () => ouvrirJourAdmin(ds));
-    } else if (events.length > 0) {
-      cell.addEventListener('click', () => ouvrirJourLecture(ds));
-    }
-    if (events.length > 0) {
-      cell.addEventListener('mouseenter', (e) => showCalHover(events, e.clientX, e.clientY));
-      cell.addEventListener('mousemove', (e) => positionCalHover(e.clientX, e.clientY));
-      cell.addEventListener('mouseleave', hideCalHover);
+    if (hasHover) {
+      // Desktop : tooltip au survol, clic selon le rôle
+      if (events.length > 0) {
+        cell.addEventListener('mouseenter', (e) => showCalHover(events, e.clientX, e.clientY));
+        cell.addEventListener('mousemove', (e) => positionCalHover(e.clientX, e.clientY));
+        cell.addEventListener('mouseleave', hideCalHover);
+      }
+      if (isCoordinateur) {
+        cell.classList.add('admin-editable');
+        cell.addEventListener('click', () => ouvrirJourAdmin(ds));
+      } else if (events.length > 0) {
+        cell.addEventListener('click', () => ouvrirJourLecture(ds));
+      }
+    } else {
+      // Mobile/tablette : tap → aperçu lecture (+ bouton Modifier si admin)
+      if (isCoordinateur) {
+        cell.classList.add('admin-editable');
+        if (events.length > 0) {
+          cell.addEventListener('click', () => ouvrirJourLectureAvecModif(ds));
+        } else {
+          cell.addEventListener('click', () => ouvrirJourAdmin(ds));
+        }
+      } else if (events.length > 0) {
+        cell.addEventListener('click', () => ouvrirJourLecture(ds));
+      }
     }
   }
 
@@ -3175,17 +3197,31 @@ function renderMiniMonth(year, month, todayStr) {
       cell.appendChild(bands);
     }
 
-    if (isCoordinateur) {
-      cell.classList.add('admin-editable');
-      cell.addEventListener('click', () => ouvrirJourAdmin(ds));
-    } else if (events.length > 0) {
-      cell.addEventListener('click', () => ouvrirJourLecture(ds));
-    }
-
-    if (events.length > 0) {
-      cell.addEventListener('mouseenter', (e) => showCalHover(events, e.clientX, e.clientY));
-      cell.addEventListener('mousemove', (e) => positionCalHover(e.clientX, e.clientY));
-      cell.addEventListener('mouseleave', hideCalHover);
+    if (hasHover) {
+      // Desktop : tooltip au survol, clic selon le rôle
+      if (events.length > 0) {
+        cell.addEventListener('mouseenter', (e) => showCalHover(events, e.clientX, e.clientY));
+        cell.addEventListener('mousemove', (e) => positionCalHover(e.clientX, e.clientY));
+        cell.addEventListener('mouseleave', hideCalHover);
+      }
+      if (isCoordinateur) {
+        cell.classList.add('admin-editable');
+        cell.addEventListener('click', () => ouvrirJourAdmin(ds));
+      } else if (events.length > 0) {
+        cell.addEventListener('click', () => ouvrirJourLecture(ds));
+      }
+    } else {
+      // Mobile/tablette : tap → aperçu lecture (+ bouton Modifier si admin)
+      if (isCoordinateur) {
+        cell.classList.add('admin-editable');
+        if (events.length > 0) {
+          cell.addEventListener('click', () => ouvrirJourLectureAvecModif(ds));
+        } else {
+          cell.addEventListener('click', () => ouvrirJourAdmin(ds));
+        }
+      } else if (events.length > 0) {
+        cell.addEventListener('click', () => ouvrirJourLecture(ds));
+      }
     }
 
     body.appendChild(cell);
@@ -3229,6 +3265,38 @@ window.ouvrirJourLecture = function(ds) {
 
   const footer = document.getElementById('modal-cal-view-footer');
   footer.innerHTML = `<button class="btn btn-secondary" onclick="closeModal('modal-cal-view')">Fermer</button>`;
+  document.getElementById('modal-cal-view').classList.add('open');
+};
+
+// ===== VUE JOUR lecture + bouton Modifier (mobile admin) =====
+window.ouvrirJourLectureAvecModif = function(ds) {
+  const events = getEventsForDate(ds);
+  if (events.length === 0) return;
+  const parts = ds.split('-');
+  const d = new Date(ds);
+  const jours = ['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'];
+  const label = `${jours[d.getDay()]} ${parseInt(parts[2])} ${MOIS_FR[parseInt(parts[1])-1]} ${parts[0]}`;
+  document.getElementById('modal-cal-view-title').textContent = label;
+
+  const list = document.getElementById('modal-cal-event-list');
+  list.innerHTML = '';
+  events.forEach(ev => {
+    const item = document.createElement('div');
+    item.className = 'cal-event-item';
+    item.style.background = ev.couleur;
+    item.innerHTML = `
+      <div class="ev-time">${ev.horaire || ''}</div>
+      <div class="ev-title">${ev.titre}</div>
+      ${ev.description ? `<div class="ev-desc">${ev.description}</div>` : ''}
+    `;
+    list.appendChild(item);
+  });
+
+  const footer = document.getElementById('modal-cal-view-footer');
+  footer.innerHTML = `
+    <button class="btn btn-secondary" onclick="closeModal('modal-cal-view')">Fermer</button>
+    <button class="btn btn-primary btn-modifier" onclick="closeModal('modal-cal-view');ouvrirJourAdmin('${ds}')">✏️ Modifier</button>
+  `;
   document.getElementById('modal-cal-view').classList.add('open');
 };
 
