@@ -63,6 +63,30 @@ header h1 span { color: var(--or-clair); }
   transition: all 0.2s;
 }
 #btn-logout:hover { background: rgba(255,255,255,0.15); }
+#btn-vue-pdn {
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.35);
+  color: var(--blanc);
+  padding: 5px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  transition: all 0.2s;
+  display: none;
+}
+#btn-vue-pdn:hover { background: rgba(255,255,255,0.15); }
+#btn-vue-pdn.mode-pdn {
+  background: var(--or);
+  border-color: var(--or-clair);
+  color: var(--blanc);
+}
+#btn-vue-pdn.mode-pdn:hover { background: var(--or-clair); }
+#user-info-btns {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
 
 /* ===== NAVIGATION ===== */
 nav {
@@ -972,7 +996,10 @@ td a:hover { text-decoration: underline; }
   <h1>Promeneurs du Net <span>32</span><span id="compteur-pdn" style="font-size:0.75rem;font-weight:300;opacity:0.7;margin-left:10px"></span></h1>
   <div id="user-info" style="display:none">
     <span id="user-name"></span>
-    <button class="btn-logout" id="btn-logout" onclick="logout()" style="font-size:0.72rem;padding:4px 9px">LogOut</button>
+    <div id="user-info-btns">
+      <button class="btn-logout" id="btn-logout" onclick="logout()" style="font-size:0.72rem;padding:4px 9px">LogOut</button>
+      <button id="btn-vue-pdn" onclick="toggleVuePdn()">Vue PdN</button>
+    </div>
   </div>
 </header>
 
@@ -1467,6 +1494,37 @@ let routePoints = [];
 let isCoordinateur = false;
 let isInvite = false;
 let isInscriptionEnCours = false;
+let vuePromeneur = false; // mode "Vue PdN" pour le coordinateur
+
+// Retourne true si on doit afficher les fonctions admin
+function isAdmin() { return isCoordinateur && !vuePromeneur; }
+
+window.toggleVuePdn = function() {
+  vuePromeneur = !vuePromeneur;
+  const btn = document.getElementById('btn-vue-pdn');
+  if (vuePromeneur) {
+    btn.textContent = 'Vue Admin';
+    btn.classList.add('mode-pdn');
+    toast('👁️ Vue Promeneur du Net activée');
+  } else {
+    btn.textContent = 'Vue PdN';
+    btn.classList.remove('mode-pdn');
+    toast('⚙️ Vue Admin restaurée');
+  }
+  // Mettre à jour l'affichage des onglets et éléments admin
+  document.getElementById('tab-admin').style.display = isAdmin() ? 'inline-block' : 'none';
+  document.getElementById('th-dates').style.display = isAdmin() ? '' : 'none';
+  document.getElementById('cal-btn-vacances').style.display = isAdmin() ? 'inline-flex' : 'none';
+  // Re-rendre le tableau et le calendrier pour tenir compte du changement
+  renderTableau();
+  if (document.getElementById('screen-calendrier').classList.contains('active')) {
+    renderCalendrier();
+  }
+  // Si on est sur l'onglet admin, revenir à ma-fiche
+  if (document.getElementById('screen-admin').classList.contains('active') && !isAdmin()) {
+    showTab('ma-fiche');
+  }
+};
 
 // ===== UTILITAIRES =====
 function toast(msg, duree = 3000) {
@@ -1671,6 +1729,8 @@ async function onConnexionReussie(user) {
     document.getElementById('tab-admin').style.display = 'inline-block';
     document.getElementById('th-dates').style.display = '';
     document.getElementById('cal-btn-vacances').style.display = 'inline-flex';
+    document.getElementById('btn-vue-pdn').style.display = 'inline-block';
+    vuePromeneur = false;
   }
   document.getElementById('tab-liens').style.display = 'inline-block';
   document.getElementById('tab-calendrier').style.display = 'inline-block';
@@ -1694,11 +1754,14 @@ onAuthStateChanged(auth, async (user) => {
   } else {
     // Pas de user connecté ET pas en mode invité → écran login
     if (!isInvite) {
-      currentUser = null; currentUserData = null; isCoordinateur = false;
+      currentUser = null; currentUserData = null; isCoordinateur = false; vuePromeneur = false;
       document.getElementById('tab-admin').style.display = 'none';
       document.getElementById('tab-liens').style.display = 'none';
       document.getElementById('tab-calendrier').style.display = 'none';
       document.getElementById('th-dates').style.display = 'none';
+      document.getElementById('btn-vue-pdn').style.display = 'none';
+      document.getElementById('btn-vue-pdn').textContent = 'Vue PdN';
+      document.getElementById('btn-vue-pdn').classList.remove('mode-pdn');
       document.getElementById('screen-login').style.display = 'flex';
       document.getElementById('screen-app').style.display = 'none';
       document.getElementById('main-nav').style.display = 'none';
@@ -1782,7 +1845,7 @@ function renderTableau() {
       <td>${rs}</td>
       <td>${p.referent || '—'}</td>
     `;
-    if (isCoordinateur) {
+    if (isAdmin()) {
       html += `<td style="font-size:0.78rem;color:var(--gris-texte)">${formatDate(p.dateVerif)}</td>`;
     }
     tr.innerHTML = html;
@@ -1813,7 +1876,7 @@ window.ficheNav = function(dir) {
 function renderFiche() {
   const p = ficheList[ficheIndex];
   if (!p) return;
-  const canEdit = !isInvite && (isCoordinateur || (currentUserData && currentUserData.id === p.id));
+  const canEdit = !isInvite && (isAdmin() || (currentUserData && currentUserData.id === p.id));
   document.getElementById('fiche-counter').textContent = `${ficheIndex + 1} / ${ficheList.length}`;
   document.getElementById('btn-prev').style.visibility = ficheIndex === 0 ? 'hidden' : 'visible';
   document.getElementById('btn-next').style.visibility = ficheIndex === ficheList.length - 1 ? 'hidden' : 'visible';
@@ -1825,15 +1888,13 @@ function renderFiche() {
   const gpsDisplay = p.gps || ((p.lat && p.lng) ? `${p.lat},${p.lng}` : '');
 
   let datesHtml = '';
-  if (isCoordinateur) {
+  if (isAdmin()) {
     datesHtml = `
       <div class="fiche-dates">
         <div class="fiche-date-item">🕐 <strong>Dernière modification :</strong> ${formatDate(p.dateMaj)}</div>
         <div class="fiche-date-item">✅ <strong>Dernière vérification :</strong> ${formatDate(p.dateVerif)}</div>
       </div>`;
   }
-
-  document.getElementById('fiche-content').innerHTML = `
     <div class="fiche-container">
     <div class="fiche-header">
       <div class="fiche-header-left">
@@ -1842,7 +1903,7 @@ function renderFiche() {
       </div>
       <div class="fiche-header-right">
         ${canEdit ? `<button class="btn btn-or btn-sm" onclick="ouvrirEdit('${p.id}')">✏️ Modifier</button>` : ''}
-        ${isCoordinateur && !isInvite ? `<button class="btn btn-danger btn-sm" onclick="desactiverCompte('${p.id}', '${p.uid || ''}')">🚫 Désactiver</button>` : ''}
+        ${isAdmin() && !isInvite ? `<button class="btn btn-danger btn-sm" onclick="desactiverCompte('${p.id}', '${p.uid || ''}')">🚫 Désactiver</button>` : ''}
       </div>
     </div>
     <div class="fiche-body">
@@ -2646,7 +2707,7 @@ let dragSrcId = null;
 async function renderLiens() {
   const container = document.getElementById('liens-grid-container');
   const toolbarAdmin = document.getElementById('liens-toolbar-admin');
-  toolbarAdmin.style.display = isCoordinateur ? 'flex' : 'none';
+  toolbarAdmin.style.display = isAdmin() ? 'flex' : 'none';
 
   container.innerHTML = '<div class="liens-empty">Chargement…</div>';
   try {
@@ -2681,7 +2742,7 @@ async function renderLiens() {
       ? `<div class="lien-desc">${l.description}</div>` : '';
     const urlDisplay = l.url
       ? `<div class="lien-url"><a href="${l.url}" target="_blank" rel="noopener">🔗 ${l.url}</a></div>` : '';
-    const adminBtns = isCoordinateur ? `
+    const adminBtns = isAdmin() ? `
       <div class="lien-actions">
         <button class="btn btn-secondary btn-sm" onclick="ouvrirModalLien('${l.id}')">✏️ Modifier</button>
         <button class="btn btn-danger btn-sm" onclick="supprimerLien('${l.id}')">🗑️</button>
@@ -2695,7 +2756,7 @@ async function renderLiens() {
       ${adminBtns}
     `;
 
-    if (isCoordinateur) {
+    if (isAdmin()) {
       card.setAttribute('draggable', 'true');
       card.addEventListener('dragstart', e => {
         dragSrcId = l.id;
@@ -3108,7 +3169,7 @@ function makeDayCell(dayNum, ds, otherMonth, todayStr) {
         cell.addEventListener('mousemove', (e) => positionCalHover(e.clientX, e.clientY));
         cell.addEventListener('mouseleave', hideCalHover);
       }
-      if (isCoordinateur) {
+      if (isAdmin()) {
         cell.classList.add('admin-editable');
         cell.addEventListener('click', () => ouvrirJourAdmin(ds));
       } else if (events.length > 0) {
@@ -3116,7 +3177,7 @@ function makeDayCell(dayNum, ds, otherMonth, todayStr) {
       }
     } else {
       // Mobile/tablette : tap → aperçu lecture (+ bouton Modifier si admin)
-      if (isCoordinateur) {
+      if (isAdmin()) {
         cell.classList.add('admin-editable');
         if (events.length > 0) {
           cell.addEventListener('click', () => ouvrirJourLectureAvecModif(ds));
@@ -3204,7 +3265,7 @@ function renderMiniMonth(year, month, todayStr) {
         cell.addEventListener('mousemove', (e) => positionCalHover(e.clientX, e.clientY));
         cell.addEventListener('mouseleave', hideCalHover);
       }
-      if (isCoordinateur) {
+      if (isAdmin()) {
         cell.classList.add('admin-editable');
         cell.addEventListener('click', () => ouvrirJourAdmin(ds));
       } else if (events.length > 0) {
@@ -3212,7 +3273,7 @@ function renderMiniMonth(year, month, todayStr) {
       }
     } else {
       // Mobile/tablette : tap → aperçu lecture (+ bouton Modifier si admin)
-      if (isCoordinateur) {
+      if (isAdmin()) {
         cell.classList.add('admin-editable');
         if (events.length > 0) {
           cell.addEventListener('click', () => ouvrirJourLectureAvecModif(ds));
@@ -3504,7 +3565,7 @@ window.exportPDF = function() {
     <table><thead><tr>
       <th>Nom Prénom</th><th>Public</th><th>Secteur</th>
       <th>Téléphone(s)</th><th>Email</th><th>Réseau social</th><th>Référent CAF</th>
-      ${isCoordinateur ? '<th>Dernière vérif.</th>' : ''}
+      ${isAdmin() ? '<th>Dernière vérif.</th>' : ''}
     </tr></thead><tbody>`;
   filtered.forEach(p => {
     const tels = [p.tel1, p.tel2].filter(Boolean).join(' / ');
@@ -3517,7 +3578,7 @@ window.exportPDF = function() {
       <td>${p.email || ''}</td>
       <td>${rs}</td>
       <td>${p.referent || ''}</td>
-      ${isCoordinateur ? `<td>${formatDate(p.dateVerif)}</td>` : ''}
+      ${isAdmin() ? `<td>${formatDate(p.dateVerif)}</td>` : ''}
     </tr>`;
   });
   html += '</tbody></table></body></html>';
