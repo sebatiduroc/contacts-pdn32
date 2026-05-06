@@ -1088,8 +1088,8 @@ td a:hover { text-decoration: underline; }
     <div class="spacer"></div>
     <button class="btn btn-secondary btn-sm" id="cal-btn-vacances" style="display:none" onclick="ouvrirModalVacances()">🗓️ Gérer les vacances</button>
     <div class="cal-mode-group">
-      <button id="cal-mode-mois" class="active" onclick="setCalMode('mois')">Mois</button>
-      <button id="cal-mode-annee" onclick="setCalMode('annee')">Année</button>
+      <button id="cal-mode-mois" onclick="setCalMode('mois')">Mois</button>
+      <button id="cal-mode-annee" class="active" onclick="setCalMode('annee')">Année</button>
     </div>
   </div>
   <div id="cal-content"></div>
@@ -2764,7 +2764,7 @@ const CAL_COLORS = {
   '#7bc67e': 'Autre'
 };
 
-let calMode = 'mois'; // 'mois' | 'annee'
+let calMode = 'annee'; // 'mois' | 'annee'
 let calYear = new Date().getFullYear();
 let calMonth = new Date().getMonth(); // 0-indexed
 let calEvents = []; // [{id, date:'YYYY-MM-DD', horaire, titre, description, couleur}]
