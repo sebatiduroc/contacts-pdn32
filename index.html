@@ -909,6 +909,47 @@ td a:hover { text-decoration: underline; }
 }
 .vacances-periode-item .vp-label { flex: 1; font-weight: 600; }
 .vacances-periode-item .vp-dates { color: var(--gris-texte); }
+
+/* ===== TOOLTIP SURVOL CALENDRIER ===== */
+#cal-hover-card {
+  position: fixed;
+  z-index: 1100;
+  pointer-events: none;
+  background: var(--blanc);
+  border-radius: 10px;
+  box-shadow: var(--ombre-forte);
+  padding: 0;
+  min-width: 240px;
+  max-width: 320px;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  font-size: 0.88rem;
+  color: var(--bleu);
+  overflow: hidden;
+}
+#cal-hover-card.visible { opacity: 1; }
+.cal-hc-event {
+  padding: 10px 14px;
+  border-bottom: 1px solid rgba(255,255,255,0.2);
+}
+.cal-hc-event:last-child { border-bottom: none; }
+.cal-hc-time {
+  font-size: 0.75rem;
+  opacity: 0.85;
+  margin-bottom: 3px;
+}
+.cal-hc-title {
+  font-family: 'Libre Baskerville', serif;
+  font-size: 0.95rem;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.cal-hc-desc {
+  font-size: 0.82rem;
+  opacity: 0.9;
+  line-height: 1.4;
+  white-space: pre-line;
+}
 </style>
 </head>
 <body>
@@ -920,6 +961,7 @@ td a:hover { text-decoration: underline; }
 
 <div id="toast"></div>
 <div id="map-hover-card"></div>
+<div id="cal-hover-card"></div>
 
 <!-- EN-TÊTE -->
 <header>
@@ -2885,6 +2927,37 @@ function dateStr(y, m, d) {
 const MOIS_FR = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
 const JOURS_COURTS = ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
 
+// ===== TOOLTIP SURVOL CALENDRIER =====
+function showCalHover(events, x, y) {
+  const card = document.getElementById('cal-hover-card');
+  card.innerHTML = events.map(ev => `
+    <div class="cal-hc-event" style="background:${ev.couleur}; color:#fff">
+      ${ev.horaire ? `<div class="cal-hc-time">${ev.horaire}</div>` : ''}
+      <div class="cal-hc-title">${ev.titre}</div>
+      ${ev.description ? `<div class="cal-hc-desc">${ev.description}</div>` : ''}
+    </div>
+  `).join('');
+  positionCalHover(x, y);
+  card.classList.add('visible');
+}
+
+function positionCalHover(x, y) {
+  const card = document.getElementById('cal-hover-card');
+  const margin = 12;
+  const cardW = 280;
+  const cardH = card.offsetHeight || 120;
+  let left = x + margin;
+  let top = y + margin;
+  if (left + cardW > window.innerWidth - 10) left = x - cardW - margin;
+  if (top + cardH > window.innerHeight - 10) top = y - cardH - margin;
+  card.style.left = left + 'px';
+  card.style.top = top + 'px';
+}
+
+function hideCalHover() {
+  document.getElementById('cal-hover-card').classList.remove('visible');
+}
+
 window.calNav = function(dir) {
   if (calMode === 'mois') {
     calMonth += dir;
@@ -3027,6 +3100,11 @@ function makeDayCell(dayNum, ds, otherMonth, todayStr) {
     } else if (events.length > 0) {
       cell.addEventListener('click', () => ouvrirJourLecture(ds));
     }
+    if (events.length > 0) {
+      cell.addEventListener('mouseenter', (e) => showCalHover(events, e.clientX, e.clientY));
+      cell.addEventListener('mousemove', (e) => positionCalHover(e.clientX, e.clientY));
+      cell.addEventListener('mouseleave', hideCalHover);
+    }
   }
 
   return cell;
@@ -3102,6 +3180,12 @@ function renderMiniMonth(year, month, todayStr) {
       cell.addEventListener('click', () => ouvrirJourAdmin(ds));
     } else if (events.length > 0) {
       cell.addEventListener('click', () => ouvrirJourLecture(ds));
+    }
+
+    if (events.length > 0) {
+      cell.addEventListener('mouseenter', (e) => showCalHover(events, e.clientX, e.clientY));
+      cell.addEventListener('mousemove', (e) => positionCalHover(e.clientX, e.clientY));
+      cell.addEventListener('mouseleave', hideCalHover);
     }
 
     body.appendChild(cell);
