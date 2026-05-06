@@ -643,6 +643,272 @@ td a:hover { text-decoration: underline; }
   .modal { max-height: 95vh; }
   header h1 { font-size: 1rem; }
 }
+
+/* ===== CALENDRIER ===== */
+.cal-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+.cal-toolbar .cal-nav-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.cal-title {
+  font-family: 'Libre Baskerville', serif;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--bleu);
+  min-width: 180px;
+  text-align: center;
+}
+.cal-mode-group {
+  display: flex;
+  border: 1.5px solid var(--gris);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.cal-mode-group button {
+  background: none;
+  border: none;
+  padding: 7px 16px;
+  cursor: pointer;
+  font-family: 'Source Sans 3', sans-serif;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--gris-texte);
+  transition: all 0.2s;
+}
+.cal-mode-group button.active {
+  background: var(--bleu);
+  color: var(--blanc);
+}
+
+/* Vue mois */
+.cal-month-grid {
+  background: var(--blanc);
+  border-radius: 10px;
+  box-shadow: var(--ombre);
+  overflow: hidden;
+}
+.cal-month-header {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  background: var(--bleu);
+}
+.cal-month-header div {
+  text-align: center;
+  padding: 10px 4px;
+  color: var(--blanc);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+.cal-month-body {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+}
+.cal-day {
+  min-height: 90px;
+  border-right: 1px solid var(--gris);
+  border-bottom: 1px solid var(--gris);
+  padding: 6px;
+  position: relative;
+  cursor: default;
+  transition: background 0.15s;
+}
+.cal-day:nth-child(7n) { border-right: none; }
+.cal-day.other-month { background: #f8f6f3; opacity: 0.6; }
+.cal-day.weekend { background: #f0ede8; }
+.cal-day.vacances { background: #d8d4cd; }
+.cal-day.today .cal-day-num {
+  background: var(--bleu);
+  color: var(--blanc);
+  border-radius: 50%;
+  width: 24px; height: 24px;
+  display: flex; align-items: center; justify-content: center;
+}
+.cal-day-num {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--bleu);
+  margin-bottom: 4px;
+  width: 24px; height: 24px;
+  display: flex; align-items: center; justify-content: center;
+}
+.cal-day.has-events { cursor: pointer; }
+.cal-day.has-events:hover { background: #eae6e0 !important; }
+.cal-day.admin-editable { cursor: pointer; }
+.cal-day.admin-editable:hover { background: #e8f0fb !important; }
+.cal-event-chip {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 3px;
+  margin-bottom: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--blanc);
+  text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+.cal-more {
+  font-size: 0.7rem;
+  color: var(--gris-texte);
+  margin-top: 2px;
+}
+
+/* Vue année */
+.cal-year-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+@media (max-width: 900px) { .cal-year-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 600px) { .cal-year-grid { grid-template-columns: repeat(2, 1fr); } }
+
+.cal-mini-month {
+  background: var(--blanc);
+  border-radius: 10px;
+  box-shadow: var(--ombre);
+  overflow: hidden;
+}
+.cal-mini-month-title {
+  background: var(--bleu);
+  color: var(--blanc);
+  text-align: center;
+  padding: 8px;
+  font-family: 'Libre Baskerville', serif;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+.cal-mini-header {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  background: #2d4a6a;
+}
+.cal-mini-header div {
+  text-align: center;
+  padding: 4px 2px;
+  color: rgba(255,255,255,0.7);
+  font-size: 0.62rem;
+  font-weight: 600;
+}
+.cal-mini-body {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  padding: 4px;
+  gap: 2px;
+}
+.cal-mini-day {
+  aspect-ratio: 1;
+  border-radius: 3px;
+  background: var(--blanc);
+  display: flex;
+  align-items: stretch;
+  overflow: hidden;
+  position: relative;
+  cursor: default;
+}
+.cal-mini-day.other-month { background: transparent; }
+.cal-mini-day.weekend { background: #f0ede8; }
+.cal-mini-day.vacances { background: #d8d4cd; }
+.cal-mini-day.today { outline: 2px solid var(--bleu); outline-offset: -1px; }
+.cal-mini-day .day-num-mini {
+  position: absolute;
+  top: 1px; left: 2px;
+  font-size: 0.52rem;
+  font-weight: 600;
+  color: var(--bleu);
+  z-index: 2;
+  line-height: 1;
+}
+.cal-mini-day.has-events { cursor: pointer; }
+.cal-mini-day.has-events:hover { opacity: 0.8; }
+.cal-mini-day.admin-editable { cursor: pointer; }
+.cal-mini-day.admin-editable:hover { opacity: 0.8; }
+.cal-mini-bands {
+  display: flex;
+  flex-direction: row;
+  width: 100%;
+  height: 100%;
+}
+.cal-mini-band {
+  flex: 1;
+  height: 100%;
+}
+
+/* Légende */
+.cal-legende {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: 16px;
+  padding: 12px 16px;
+  background: var(--blanc);
+  border-radius: 8px;
+  box-shadow: var(--ombre);
+  font-size: 0.8rem;
+  color: var(--gris-texte);
+}
+.cal-legende-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.cal-legende-dot {
+  width: 14px; height: 14px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+/* Modal événement (vue) */
+.modal-cal-view .modal { max-width: 480px; }
+.cal-event-list { display: flex; flex-direction: column; gap: 12px; }
+.cal-event-item {
+  border-radius: 8px;
+  padding: 14px 16px;
+  color: var(--blanc);
+}
+.cal-event-item .ev-time { font-size: 0.78rem; opacity: 0.85; margin-bottom: 4px; }
+.cal-event-item .ev-title { font-family: 'Libre Baskerville', serif; font-size: 1rem; font-weight: 700; margin-bottom: 6px; }
+.cal-event-item .ev-desc { font-size: 0.85rem; opacity: 0.9; line-height: 1.4; white-space: pre-line; }
+.cal-event-item .ev-actions { display: flex; gap: 8px; margin-top: 10px; }
+.cal-event-item .ev-actions button { font-size: 0.78rem; padding: 4px 10px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.5); background: rgba(255,255,255,0.2); color: var(--blanc); cursor: pointer; font-weight: 600; transition: background 0.15s; }
+.cal-event-item .ev-actions button:hover { background: rgba(255,255,255,0.35); }
+
+/* Modal édition événement */
+.modal-cal-edit .modal { max-width: 500px; }
+.color-picker-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.color-swatch {
+  width: 32px; height: 32px;
+  border-radius: 6px;
+  border: 3px solid transparent;
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+.color-swatch:hover { transform: scale(1.15); }
+.color-swatch.selected { border-color: var(--bleu); transform: scale(1.1); }
+
+/* Vacances admin */
+.vacances-periodes { display: flex; flex-direction: column; gap: 8px; }
+.vacances-periode-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 12px;
+  background: var(--fond);
+  border-radius: 6px;
+  font-size: 0.85rem;
+}
+.vacances-periode-item .vp-label { flex: 1; font-weight: 600; }
+.vacances-periode-item .vp-dates { color: var(--gris-texte); }
 </style>
 </head>
 <body>
@@ -671,6 +937,7 @@ td a:hover { text-decoration: underline; }
   <button onclick="showTab('carte')" id="tab-carte">🗺️ Carte</button>
   <button onclick="showTab('ma-fiche')" id="tab-ma-fiche">✏️ Ma fiche</button>
   <button onclick="showTab('liens')" id="tab-liens" style="display:none">🔗 Liens utiles</button>
+  <button onclick="showTab('calendrier')" id="tab-calendrier" style="display:none">📅 Calendrier</button>
   <button onclick="showTab('admin')" id="tab-admin" style="display:none">⚙️ Admin</button>
 </nav>
 
@@ -806,6 +1073,34 @@ td a:hover { text-decoration: underline; }
   </div>
   <div id="liens-grid-container">
     <div class="liens-empty">Chargement…</div>
+  </div>
+</div>
+
+<!-- CALENDRIER -->
+<div id="screen-calendrier" class="screen">
+  <div class="cal-toolbar">
+    <div class="cal-nav-group">
+      <button class="btn btn-secondary btn-sm" id="cal-btn-prev" onclick="calNav(-1)">◀</button>
+      <button class="btn btn-secondary btn-sm" id="cal-btn-today" onclick="calToday()">Aujourd'hui</button>
+      <button class="btn btn-secondary btn-sm" id="cal-btn-next" onclick="calNav(1)">▶</button>
+    </div>
+    <span class="cal-title" id="cal-title"></span>
+    <div class="spacer"></div>
+    <button class="btn btn-secondary btn-sm" id="cal-btn-vacances" style="display:none" onclick="ouvrirModalVacances()">🗓️ Gérer les vacances</button>
+    <div class="cal-mode-group">
+      <button id="cal-mode-mois" class="active" onclick="setCalMode('mois')">Mois</button>
+      <button id="cal-mode-annee" onclick="setCalMode('annee')">Année</button>
+    </div>
+  </div>
+  <div id="cal-content"></div>
+  <div class="cal-legende" id="cal-legende">
+    <span style="font-size:0.78rem;font-weight:600;color:var(--bleu);margin-right:4px">Légende :</span>
+    <div class="cal-legende-item"><div class="cal-legende-dot" style="background:#d8d4cd"></div> Vacances scolaires zone C</div>
+    <div class="cal-legende-item"><div class="cal-legende-dot" style="background:#e8302a"></div> Séminaire</div>
+    <div class="cal-legende-item"><div class="cal-legende-dot" style="background:#4da6e8"></div> Échange de pratiques</div>
+    <div class="cal-legende-item"><div class="cal-legende-dot" style="background:#f07d2a"></div> Formation ponctuelle</div>
+    <div class="cal-legende-item"><div class="cal-legende-dot" style="background:#f5c800"></div> Café virtuel</div>
+    <div class="cal-legende-item"><div class="cal-legende-dot" style="background:#7bc67e"></div> Autre</div>
   </div>
 </div>
 
@@ -997,6 +1292,91 @@ td a:hover { text-decoration: underline; }
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModal('modal-lien')">Annuler</button>
       <button class="btn btn-primary" onclick="sauvegarderLien()">💾 Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL VUE JOUR (calendrier) ===== -->
+<div class="modal-overlay modal-cal-view" id="modal-cal-view">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-header">
+      <h3 id="modal-cal-view-title">Événements du jour</h3>
+      <button class="modal-close" onclick="closeModal('modal-cal-view')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="cal-event-list" id="modal-cal-event-list"></div>
+    </div>
+    <div class="modal-footer" id="modal-cal-view-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-cal-view')">Fermer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL ÉDITION ÉVÉNEMENT (admin) ===== -->
+<div class="modal-overlay modal-cal-edit" id="modal-cal-edit">
+  <div class="modal" style="max-width:500px">
+    <div class="modal-header">
+      <h3 id="modal-cal-edit-title">Ajouter un événement</h3>
+      <button class="modal-close" onclick="closeModal('modal-cal-edit')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="cal-edit-id">
+      <input type="hidden" id="cal-edit-date">
+      <div class="form-group">
+        <label>Date</label>
+        <input type="date" id="cal-edit-date-input">
+      </div>
+      <div class="form-group">
+        <label>Horaire</label>
+        <input type="text" id="cal-edit-horaire" placeholder="ex: 14h00–16h00 ou Toute la journée">
+      </div>
+      <div class="form-group">
+        <label>Titre *</label>
+        <input type="text" id="cal-edit-titre" placeholder="Titre court de l'événement">
+      </div>
+      <div class="form-group">
+        <label>Description</label>
+        <textarea id="cal-edit-desc" rows="3" placeholder="Description détaillée (optionnel)"></textarea>
+      </div>
+      <div class="form-group">
+        <label>Catégorie / Couleur *</label>
+        <div class="color-picker-row" id="cal-color-picker">
+          <div class="color-swatch" data-color="#e8302a" data-label="Séminaire" style="background:#e8302a" title="Séminaire" onclick="selectCalColor('#e8302a')"></div>
+          <div class="color-swatch" data-color="#4da6e8" data-label="Échange de pratiques" style="background:#4da6e8" title="Échange de pratiques" onclick="selectCalColor('#4da6e8')"></div>
+          <div class="color-swatch" data-color="#f07d2a" data-label="Formation ponctuelle" style="background:#f07d2a" title="Formation ponctuelle" onclick="selectCalColor('#f07d2a')"></div>
+          <div class="color-swatch" data-color="#f5c800" data-label="Café virtuel" style="background:#f5c800" title="Café virtuel" onclick="selectCalColor('#f5c800')"></div>
+          <div class="color-swatch" data-color="#7bc67e" data-label="Autre" style="background:#7bc67e" title="Autre" onclick="selectCalColor('#7bc67e')"></div>
+        </div>
+        <div id="cal-color-label" style="font-size:0.8rem;color:var(--gris-texte);margin-top:6px"></div>
+      </div>
+      <div id="err-cal-edit" class="msg-error"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-cal-edit')">Annuler</button>
+      <button class="btn btn-primary" onclick="sauvegarderEvenement()">💾 Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL VACANCES (admin fallback) ===== -->
+<div class="modal-overlay" id="modal-cal-vacances">
+  <div class="modal" style="max-width:560px">
+    <div class="modal-header">
+      <h3>📅 Vacances scolaires – Zone C (Toulouse)</h3>
+      <button class="modal-close" onclick="closeModal('modal-cal-vacances')">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:0.85rem;color:var(--gris-texte);margin-bottom:14px">
+        Ces périodes sont normalement chargées automatiquement depuis le ministère de l'Éducation nationale. 
+        En cas d'échec ou pour correction, vous pouvez les saisir manuellement ici (format JJ/MM/AAAA).
+      </p>
+      <div id="vacances-periodes-list" class="vacances-periodes"></div>
+      <button class="btn btn-secondary btn-sm" style="margin-top:12px" onclick="ajouterPeriodeVacances()">＋ Ajouter une période</button>
+      <div id="err-vacances" class="msg-error" style="margin-top:10px"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-cal-vacances')">Annuler</button>
+      <button class="btn btn-primary" onclick="sauvegarderVacances()">💾 Enregistrer</button>
     </div>
   </div>
 </div>
@@ -1205,6 +1585,7 @@ window.accederEnInvite = async function() {
   document.getElementById('btn-logout').textContent = 'LogIn';
   document.getElementById('tab-ma-fiche').style.display = 'none';
   document.getElementById('tab-admin').style.display = 'none';
+  document.getElementById('tab-calendrier').style.display = 'none';
   document.getElementById('th-dates').style.display = 'none';
   loader(false);
   populateFiltres();
@@ -1243,8 +1624,10 @@ async function onConnexionReussie(user) {
   if (isCoordinateur) {
     document.getElementById('tab-admin').style.display = 'inline-block';
     document.getElementById('th-dates').style.display = '';
+    document.getElementById('cal-btn-vacances').style.display = 'inline-flex';
   }
   document.getElementById('tab-liens').style.display = 'inline-block';
+  document.getElementById('tab-calendrier').style.display = 'inline-block';
 
   populateFiltres();
   renderTableau();
@@ -1268,6 +1651,7 @@ onAuthStateChanged(auth, async (user) => {
       currentUser = null; currentUserData = null; isCoordinateur = false;
       document.getElementById('tab-admin').style.display = 'none';
       document.getElementById('tab-liens').style.display = 'none';
+      document.getElementById('tab-calendrier').style.display = 'none';
       document.getElementById('th-dates').style.display = 'none';
       document.getElementById('screen-login').style.display = 'flex';
       document.getElementById('screen-app').style.display = 'none';
@@ -1298,6 +1682,7 @@ window.showTab = function(tab) {
   if (tab === 'ma-fiche') renderMaFiche();
   if (tab === 'admin') renderAdmin();
   if (tab === 'liens') renderLiens();
+  if (tab === 'calendrier') initCalendrier();
 };
 
 // ===== TABLEAU =====
@@ -2368,6 +2753,586 @@ window.supprimerLien = async function(id) {
   await deleteDoc(doc(db, 'liens', id));
   toast('Lien supprimé');
   renderLiens();
+};
+
+// ===== CALENDRIER =====
+const CAL_COLORS = {
+  '#e8302a': 'Séminaire',
+  '#4da6e8': 'Échange de pratiques',
+  '#f07d2a': 'Formation ponctuelle',
+  '#f5c800': 'Café virtuel',
+  '#7bc67e': 'Autre'
+};
+
+let calMode = 'mois'; // 'mois' | 'annee'
+let calYear = new Date().getFullYear();
+let calMonth = new Date().getMonth(); // 0-indexed
+let calEvents = []; // [{id, date:'YYYY-MM-DD', horaire, titre, description, couleur}]
+let calVacances = []; // [{debut:'YYYY-MM-DD', fin:'YYYY-MM-DD', label}]
+let calInitDone = false;
+let calSelectedColor = '';
+
+async function initCalendrier() {
+  if (!calInitDone) {
+    calInitDone = true;
+    await chargerEvenements();
+    await chargerVacances();
+  }
+  renderCalendrier();
+}
+
+async function chargerEvenements() {
+  try {
+    const snap = await getDocs(collection(db, 'cal_evenements'));
+    calEvents = [];
+    snap.forEach(d => calEvents.push({ id: d.id, ...d.data() }));
+  } catch(e) { console.error('Cal events load error:', e); }
+}
+
+async function chargerVacances() {
+  // Essayer depuis Firestore d'abord (cache admin)
+  try {
+    const snap = await getDocs(collection(db, 'cal_vacances'));
+    if (!snap.empty) {
+      calVacances = [];
+      snap.forEach(d => calVacances.push(d.data()));
+      return;
+    }
+  } catch(e) {}
+
+  // Sinon, récupérer depuis l'API data.gouv.fr
+  if (isCoordinateur) {
+    await fetchVacancesMinistere();
+  } else {
+    // Promeneur : essayer l'API sans stocker
+    await fetchVacancesMinistere(false);
+  }
+}
+
+async function fetchVacancesMinistere(stocker = true) {
+  try {
+    const url = 'https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-calendrier-scolaire/records?where=zones%20like%20%22Zone%20C%22&limit=100&offset=0';
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+    const periodes = [];
+    (data.results || []).forEach(r => {
+      if (!r.start_date || !r.end_date) return;
+      // Exclure "Rentrée scolaire"
+      if ((r.description || '').toLowerCase().includes('rentrée')) return;
+      const debut = r.start_date.slice(0, 10);
+      const finRaw = r.end_date.slice(0, 10);
+      // La date de fin du ministère est le 1er jour de reprise des cours
+      // → on enlève 1 jour pour avoir la vraie dernière journée de vacances
+      const finDate = new Date(finRaw);
+      finDate.setDate(finDate.getDate() - 1);
+      const fin = finDate.toISOString().slice(0, 10);
+
+      // Cas du dernier jour avant vacances : si le départ est "après les cours" (vendredi soir),
+      // le vendredi n'est PAS vacances → on avance d'un jour
+      const debutDate = new Date(debut);
+      // On vérifie si c'est le dernier jour ouvrable (lun-ven) AVANT le WE ou la période suivante
+      // Par convention : si départ un vendredi → lendemain samedi = 1er jour vacances
+      // Mais l'API indique la date de départ incluant la date "après les cours"
+      // → Si c'est un vendredi, le vendredi n'est PAS vacances, les vacances commencent samedi
+      // Si c'est un samedi, le samedi EST vacances
+      let debutEffectif = debut;
+      if (debutDate.getDay() === 5) { // Vendredi
+        debutDate.setDate(debutDate.getDate() + 1);
+        debutEffectif = debutDate.toISOString().slice(0, 10);
+      }
+
+      periodes.push({
+        debut: debutEffectif,
+        fin,
+        label: r.description || 'Vacances'
+      });
+    });
+
+    calVacances = periodes;
+
+    if (stocker && periodes.length > 0) {
+      // Sauvegarder dans Firestore pour les promeneurs aussi
+      try {
+        const batch = [];
+        // Supprimer anciens
+        const oldSnap = await getDocs(collection(db, 'cal_vacances'));
+        oldSnap.forEach(d => batch.push(deleteDoc(doc(db, 'cal_vacances', d.id))));
+        await Promise.all(batch);
+        // Insérer nouveaux
+        const saves = periodes.map((p, i) => setDoc(doc(db, 'cal_vacances', 'v' + i), p));
+        await Promise.all(saves);
+      } catch(e) { console.warn('Impossible de sauvegarder les vacances:', e); }
+    }
+  } catch(e) {
+    console.warn('Vacances API error:', e);
+    // Ne pas bloquer le calendrier
+  }
+}
+
+function isVacances(dateStr) {
+  return calVacances.some(v => dateStr >= v.debut && dateStr <= v.fin);
+}
+
+function getEventsForDate(dateStr) {
+  return calEvents.filter(e => e.date === dateStr).sort((a, b) => (a.horaire || '').localeCompare(b.horaire || ''));
+}
+
+function dateStr(y, m, d) {
+  return `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+}
+
+const MOIS_FR = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+const JOURS_COURTS = ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
+
+window.calNav = function(dir) {
+  if (calMode === 'mois') {
+    calMonth += dir;
+    if (calMonth > 11) { calMonth = 0; calYear++; }
+    if (calMonth < 0) { calMonth = 11; calYear--; }
+  } else {
+    calYear += dir;
+  }
+  renderCalendrier();
+};
+
+window.calToday = function() {
+  const now = new Date();
+  calYear = now.getFullYear();
+  calMonth = now.getMonth();
+  renderCalendrier();
+};
+
+window.setCalMode = function(mode) {
+  calMode = mode;
+  document.getElementById('cal-mode-mois').classList.toggle('active', mode === 'mois');
+  document.getElementById('cal-mode-annee').classList.toggle('active', mode === 'annee');
+  renderCalendrier();
+};
+
+function renderCalendrier() {
+  const title = document.getElementById('cal-title');
+  const content = document.getElementById('cal-content');
+  const today = new Date();
+  const todayStr = dateStr(today.getFullYear(), today.getMonth(), today.getDate());
+
+  if (calMode === 'mois') {
+    title.textContent = `${MOIS_FR[calMonth]} ${calYear}`;
+    content.innerHTML = '';
+    content.appendChild(renderMonthGrid(calYear, calMonth, todayStr));
+  } else {
+    title.textContent = `${calYear}`;
+    const grid = document.createElement('div');
+    grid.className = 'cal-year-grid';
+    for (let m = 0; m < 12; m++) {
+      grid.appendChild(renderMiniMonth(calYear, m, todayStr));
+    }
+    content.innerHTML = '';
+    content.appendChild(grid);
+  }
+}
+
+function renderMonthGrid(year, month, todayStr) {
+  const wrap = document.createElement('div');
+  wrap.className = 'cal-month-grid';
+
+  // Header jours
+  const header = document.createElement('div');
+  header.className = 'cal-month-header';
+  JOURS_COURTS.forEach(j => {
+    const d = document.createElement('div');
+    d.textContent = j;
+    header.appendChild(d);
+  });
+  wrap.appendChild(header);
+
+  const body = document.createElement('div');
+  body.className = 'cal-month-body';
+
+  // 1er du mois → quel jour de la semaine (lundi=0)
+  const firstDay = new Date(year, month, 1);
+  let startDow = firstDay.getDay(); // 0=dim
+  startDow = startDow === 0 ? 6 : startDow - 1; // lundi=0
+
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const daysInPrevMonth = new Date(year, month, 0).getDate();
+
+  // Jours du mois précédent
+  for (let i = 0; i < startDow; i++) {
+    const day = daysInPrevMonth - startDow + 1 + i;
+    const prevMonth = month === 0 ? 11 : month - 1;
+    const prevYear = month === 0 ? year - 1 : year;
+    const ds = dateStr(prevYear, prevMonth, day);
+    body.appendChild(makeDayCell(day, ds, true, todayStr));
+  }
+
+  // Jours du mois courant
+  for (let d = 1; d <= daysInMonth; d++) {
+    const ds = dateStr(year, month, d);
+    body.appendChild(makeDayCell(d, ds, false, todayStr));
+  }
+
+  // Jours du mois suivant
+  const totalCells = startDow + daysInMonth;
+  const remaining = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
+  for (let i = 1; i <= remaining; i++) {
+    const nextMonth = month === 11 ? 0 : month + 1;
+    const nextYear = month === 11 ? year + 1 : year;
+    const ds = dateStr(nextYear, nextMonth, i);
+    body.appendChild(makeDayCell(i, ds, true, todayStr));
+  }
+
+  wrap.appendChild(body);
+  return wrap;
+}
+
+function makeDayCell(dayNum, ds, otherMonth, todayStr) {
+  const cell = document.createElement('div');
+  cell.className = 'cal-day';
+
+  const dow = new Date(ds).getDay(); // 0=dim, 6=sam
+  if (otherMonth) cell.classList.add('other-month');
+  else if (dow === 0 || dow === 6) cell.classList.add('weekend');
+  if (!otherMonth && isVacances(ds)) cell.classList.add('vacances');
+  if (ds === todayStr) cell.classList.add('today');
+
+  const numEl = document.createElement('div');
+  numEl.className = 'cal-day-num';
+  numEl.textContent = dayNum;
+  cell.appendChild(numEl);
+
+  const events = otherMonth ? [] : getEventsForDate(ds);
+  if (events.length > 0) {
+    const maxShow = 3;
+    events.slice(0, maxShow).forEach(ev => {
+      const chip = document.createElement('div');
+      chip.className = 'cal-event-chip';
+      chip.style.background = ev.couleur;
+      chip.textContent = (ev.horaire ? ev.horaire + ' ' : '') + ev.titre;
+      cell.appendChild(chip);
+    });
+    if (events.length > maxShow) {
+      const more = document.createElement('div');
+      more.className = 'cal-more';
+      more.textContent = `+${events.length - maxShow} autre(s)`;
+      cell.appendChild(more);
+    }
+    cell.classList.add('has-events');
+  }
+
+  if (!otherMonth) {
+    if (isCoordinateur) {
+      cell.classList.add('admin-editable');
+      cell.addEventListener('click', () => ouvrirJourAdmin(ds));
+    } else if (events.length > 0) {
+      cell.addEventListener('click', () => ouvrirJourLecture(ds));
+    }
+  }
+
+  return cell;
+}
+
+function renderMiniMonth(year, month, todayStr) {
+  const wrap = document.createElement('div');
+  wrap.className = 'cal-mini-month';
+
+  const title = document.createElement('div');
+  title.className = 'cal-mini-month-title';
+  title.textContent = MOIS_FR[month];
+  wrap.appendChild(title);
+
+  const header = document.createElement('div');
+  header.className = 'cal-mini-header';
+  JOURS_COURTS.forEach(j => {
+    const d = document.createElement('div');
+    d.textContent = j[0];
+    header.appendChild(d);
+  });
+  wrap.appendChild(header);
+
+  const body = document.createElement('div');
+  body.className = 'cal-mini-body';
+
+  const firstDay = new Date(year, month, 1);
+  let startDow = firstDay.getDay();
+  startDow = startDow === 0 ? 6 : startDow - 1;
+
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const daysInPrevMonth = new Date(year, month, 0).getDate();
+
+  for (let i = 0; i < startDow; i++) {
+    const cell = document.createElement('div');
+    cell.className = 'cal-mini-day other-month';
+    body.appendChild(cell);
+  }
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const ds = dateStr(year, month, d);
+    const dow = new Date(ds).getDay();
+    const events = getEventsForDate(ds);
+    const vac = isVacances(ds);
+
+    const cell = document.createElement('div');
+    cell.className = 'cal-mini-day';
+    if (dow === 0 || dow === 6) cell.classList.add('weekend');
+    if (vac) cell.classList.add('vacances');
+    if (ds === todayStr) cell.classList.add('today');
+
+    const numEl = document.createElement('div');
+    numEl.className = 'day-num-mini';
+    numEl.textContent = d;
+    cell.appendChild(numEl);
+
+    if (events.length > 0) {
+      cell.classList.add('has-events');
+      // Afficher bandes verticales de couleur
+      const bands = document.createElement('div');
+      bands.className = 'cal-mini-bands';
+      events.forEach(ev => {
+        const band = document.createElement('div');
+        band.className = 'cal-mini-band';
+        band.style.background = ev.couleur;
+        bands.appendChild(band);
+      });
+      cell.appendChild(bands);
+    }
+
+    if (isCoordinateur) {
+      cell.classList.add('admin-editable');
+      cell.addEventListener('click', () => ouvrirJourAdmin(ds));
+    } else if (events.length > 0) {
+      cell.addEventListener('click', () => ouvrirJourLecture(ds));
+    }
+
+    body.appendChild(cell);
+  }
+
+  const totalCells = startDow + daysInMonth;
+  const remaining = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
+  for (let i = 0; i < remaining; i++) {
+    const cell = document.createElement('div');
+    cell.className = 'cal-mini-day other-month';
+    body.appendChild(cell);
+  }
+
+  wrap.appendChild(body);
+  return wrap;
+}
+
+// ===== VUE JOUR (lecture) =====
+window.ouvrirJourLecture = function(ds) {
+  const events = getEventsForDate(ds);
+  if (events.length === 0) return;
+  const parts = ds.split('-');
+  const d = new Date(ds);
+  const jours = ['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'];
+  const label = `${jours[d.getDay()]} ${parseInt(parts[2])} ${MOIS_FR[parseInt(parts[1])-1]} ${parts[0]}`;
+  document.getElementById('modal-cal-view-title').textContent = label;
+
+  const list = document.getElementById('modal-cal-event-list');
+  list.innerHTML = '';
+  events.forEach(ev => {
+    const item = document.createElement('div');
+    item.className = 'cal-event-item';
+    item.style.background = ev.couleur;
+    item.innerHTML = `
+      <div class="ev-time">${ev.horaire || ''}</div>
+      <div class="ev-title">${ev.titre}</div>
+      ${ev.description ? `<div class="ev-desc">${ev.description}</div>` : ''}
+    `;
+    list.appendChild(item);
+  });
+
+  const footer = document.getElementById('modal-cal-view-footer');
+  footer.innerHTML = `<button class="btn btn-secondary" onclick="closeModal('modal-cal-view')">Fermer</button>`;
+  document.getElementById('modal-cal-view').classList.add('open');
+};
+
+// ===== VUE JOUR (admin) =====
+window.ouvrirJourAdmin = function(ds) {
+  const events = getEventsForDate(ds);
+  const parts = ds.split('-');
+  const d = new Date(ds);
+  const jours = ['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'];
+  const label = `${jours[d.getDay()]} ${parseInt(parts[2])} ${MOIS_FR[parseInt(parts[1])-1]} ${parts[0]}`;
+  document.getElementById('modal-cal-view-title').textContent = label;
+
+  const list = document.getElementById('modal-cal-event-list');
+  list.innerHTML = '';
+
+  if (events.length === 0) {
+    // Passer directement à la modal d'ajout
+    ouvrirModalCalEdit(null, ds);
+    return;
+  }
+
+  events.forEach(ev => {
+    const item = document.createElement('div');
+    item.className = 'cal-event-item';
+    item.style.background = ev.couleur;
+    item.innerHTML = `
+      <div class="ev-time">${ev.horaire || ''}</div>
+      <div class="ev-title">${ev.titre}</div>
+      ${ev.description ? `<div class="ev-desc">${ev.description}</div>` : ''}
+      <div class="ev-actions">
+        <button onclick="closeModal('modal-cal-view');ouvrirModalCalEdit('${ev.id}', '${ds}')">✏️ Modifier</button>
+        <button onclick="supprimerEvenement('${ev.id}', '${ds}')">🗑️ Supprimer</button>
+      </div>
+    `;
+    list.appendChild(item);
+  });
+
+  const footer = document.getElementById('modal-cal-view-footer');
+  footer.innerHTML = `
+    <button class="btn btn-secondary" onclick="closeModal('modal-cal-view')">Fermer</button>
+    <button class="btn btn-primary" onclick="closeModal('modal-cal-view');ouvrirModalCalEdit(null, '${ds}')">＋ Ajouter</button>
+  `;
+  document.getElementById('modal-cal-view').classList.add('open');
+};
+
+// ===== MODAL ÉDITION ÉVÉNEMENT =====
+window.ouvrirModalCalEdit = function(id, ds) {
+  document.getElementById('err-cal-edit').style.display = 'none';
+  calSelectedColor = '';
+  document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
+  document.getElementById('cal-color-label').textContent = '';
+
+  if (id) {
+    const ev = calEvents.find(e => e.id === id);
+    if (!ev) return;
+    document.getElementById('modal-cal-edit-title').textContent = 'Modifier l\'événement';
+    document.getElementById('cal-edit-id').value = id;
+    document.getElementById('cal-edit-date').value = ev.date;
+    document.getElementById('cal-edit-date-input').value = ev.date;
+    document.getElementById('cal-edit-horaire').value = ev.horaire || '';
+    document.getElementById('cal-edit-titre').value = ev.titre || '';
+    document.getElementById('cal-edit-desc').value = ev.description || '';
+    selectCalColor(ev.couleur);
+  } else {
+    document.getElementById('modal-cal-edit-title').textContent = 'Ajouter un événement';
+    document.getElementById('cal-edit-id').value = '';
+    document.getElementById('cal-edit-date').value = ds || '';
+    document.getElementById('cal-edit-date-input').value = ds || '';
+    document.getElementById('cal-edit-horaire').value = '';
+    document.getElementById('cal-edit-titre').value = '';
+    document.getElementById('cal-edit-desc').value = '';
+  }
+  document.getElementById('modal-cal-edit').classList.add('open');
+};
+
+window.selectCalColor = function(color) {
+  calSelectedColor = color;
+  document.querySelectorAll('.color-swatch').forEach(s => {
+    s.classList.toggle('selected', s.dataset.color === color);
+  });
+  document.getElementById('cal-color-label').textContent = CAL_COLORS[color] || '';
+};
+
+window.sauvegarderEvenement = async function() {
+  const id = document.getElementById('cal-edit-id').value;
+  const date = document.getElementById('cal-edit-date-input').value;
+  const horaire = document.getElementById('cal-edit-horaire').value.trim();
+  const titre = document.getElementById('cal-edit-titre').value.trim();
+  const description = document.getElementById('cal-edit-desc').value.trim();
+  const couleur = calSelectedColor;
+  const errEl = document.getElementById('err-cal-edit');
+
+  if (!titre) { errEl.textContent = 'Le titre est obligatoire.'; errEl.style.display = 'block'; return; }
+  if (!couleur) { errEl.textContent = 'Veuillez choisir une catégorie/couleur.'; errEl.style.display = 'block'; return; }
+  if (!date) { errEl.textContent = 'La date est obligatoire.'; errEl.style.display = 'block'; return; }
+
+  const data = { date, horaire, titre, description, couleur };
+  try {
+    if (id) {
+      await updateDoc(doc(db, 'cal_evenements', id), data);
+      const idx = calEvents.findIndex(e => e.id === id);
+      if (idx >= 0) calEvents[idx] = { id, ...data };
+      toast('✅ Événement modifié');
+    } else {
+      const ref = await addDoc(collection(db, 'cal_evenements'), data);
+      calEvents.push({ id: ref.id, ...data });
+      toast('✅ Événement ajouté');
+    }
+    closeModal('modal-cal-edit');
+    renderCalendrier();
+  } catch(e) {
+    errEl.textContent = 'Erreur : ' + e.message;
+    errEl.style.display = 'block';
+  }
+};
+
+window.supprimerEvenement = async function(id, ds) {
+  const ev = calEvents.find(e => e.id === id);
+  if (!confirm(`Supprimer l'événement "${ev?.titre}" ?`)) return;
+  try {
+    await deleteDoc(doc(db, 'cal_evenements', id));
+    calEvents = calEvents.filter(e => e.id !== id);
+    closeModal('modal-cal-view');
+    toast('Événement supprimé');
+    renderCalendrier();
+  } catch(e) {
+    toast('Erreur : ' + e.message);
+  }
+};
+
+// ===== VACANCES ADMIN =====
+let vacancesPeriodesTmp = [];
+
+window.ouvrirModalVacances = function() {
+  vacancesPeriodesTmp = calVacances.map(v => ({ ...v }));
+  renderVacancesForm();
+  document.getElementById('modal-cal-vacances').classList.add('open');
+};
+
+function renderVacancesForm() {
+  const list = document.getElementById('vacances-periodes-list');
+  list.innerHTML = '';
+  vacancesPeriodesTmp.forEach((p, i) => {
+    const item = document.createElement('div');
+    item.className = 'vacances-periode-item';
+    item.innerHTML = `
+      <input type="text" value="${p.label || ''}" placeholder="Libellé" style="flex:1;max-width:180px;padding:6px 8px;font-size:0.85rem" onchange="vacancesPeriodesTmp[${i}].label=this.value">
+      <input type="date" value="${p.debut}" style="padding:6px 8px;font-size:0.85rem" onchange="vacancesPeriodesTmp[${i}].debut=this.value">
+      <span style="color:var(--gris-texte)">→</span>
+      <input type="date" value="${p.fin}" style="padding:6px 8px;font-size:0.85rem" onchange="vacancesPeriodesTmp[${i}].fin=this.value">
+      <button class="btn btn-danger btn-sm" onclick="supprimerPeriodeVacances(${i})">🗑️</button>
+    `;
+    list.appendChild(item);
+  });
+}
+
+window.ajouterPeriodeVacances = function() {
+  vacancesPeriodesTmp.push({ label: 'Vacances', debut: '', fin: '' });
+  renderVacancesForm();
+};
+
+window.supprimerPeriodeVacances = function(i) {
+  vacancesPeriodesTmp.splice(i, 1);
+  renderVacancesForm();
+};
+
+window.sauvegarderVacances = async function() {
+  const errEl = document.getElementById('err-vacances');
+  errEl.style.display = 'none';
+  for (const p of vacancesPeriodesTmp) {
+    if (!p.debut || !p.fin) { errEl.textContent = 'Toutes les périodes doivent avoir une date de début et de fin.'; errEl.style.display = 'block'; return; }
+    if (p.debut > p.fin) { errEl.textContent = `La date de début doit être avant la fin (${p.label}).`; errEl.style.display = 'block'; return; }
+  }
+  try {
+    const oldSnap = await getDocs(collection(db, 'cal_vacances'));
+    const dels = [];
+    oldSnap.forEach(d => dels.push(deleteDoc(doc(db, 'cal_vacances', d.id))));
+    await Promise.all(dels);
+    const saves = vacancesPeriodesTmp.map((p, i) => setDoc(doc(db, 'cal_vacances', 'v' + i), p));
+    await Promise.all(saves);
+    calVacances = [...vacancesPeriodesTmp];
+    closeModal('modal-cal-vacances');
+    toast('✅ Vacances sauvegardées');
+    renderCalendrier();
+  } catch(e) {
+    errEl.textContent = 'Erreur : ' + e.message;
+    errEl.style.display = 'block';
+  }
 };
 
 // ===== EXPORT PDF =====
