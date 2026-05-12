@@ -658,6 +658,42 @@ td a:hover { text-decoration: underline; }
 /* Modal Lien */
 #modal-lien .modal { max-width: 500px; }
 
+/* ===== MODE MAIL ===== */
+.btn-mail { background: var(--bleu-clair); color: var(--blanc); }
+.btn-mail:hover { background: #1f5080; }
+.btn-envoyer { background: var(--vert); color: var(--blanc); }
+.btn-envoyer:hover { background: #219a52; }
+.mail-cb-cell {
+  width: 36px;
+  text-align: center;
+  padding: 11px 6px;
+}
+.mail-cb-cell input[type=checkbox] {
+  width: 16px; height: 16px;
+  cursor: pointer;
+  accent-color: var(--bleu-clair);
+}
+th.mail-cb-th {
+  width: 36px;
+  text-align: center;
+  padding: 12px 6px;
+}
+#mail-mode-bar {
+  display: none;
+  align-items: center;
+  gap: 10px;
+  background: #e8f4fb;
+  border: 1.5px solid var(--bleu-clair);
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+  font-size: 0.88rem;
+  color: var(--bleu);
+  flex-wrap: wrap;
+}
+#mail-mode-bar.visible { display: flex; }
+#mail-count-label { font-weight: 600; flex: 1; }
+
 /* ===== RESPONSIVE ===== */
 @media (max-width: 600px) {
   main { padding: 14px; }
@@ -1085,12 +1121,23 @@ td a:hover { text-decoration: underline; }
       <option value="">Tous référents</option>
     </select>
     <div class="spacer"></div>
+    <button class="btn btn-mail btn-sm" id="btn-mail-toggle" style="display:none" onclick="toggleMailMode()">✉️ Mail</button>
     <button class="btn btn-secondary btn-sm" onclick="exportPDF()">📄 Export PDF</button>
   </div>
+
+  <!-- Barre mode mail -->
+  <div id="mail-mode-bar">
+    <span id="mail-count-label">0 destinataire sélectionné</span>
+    <button class="btn btn-secondary btn-sm" onclick="toggleSelectAll()">☑️ Tout sélectionner</button>
+    <button class="btn btn-envoyer btn-sm" id="btn-envoyer" disabled onclick="envoyerMail()">📨 Envoyer</button>
+    <button class="btn btn-secondary btn-sm" onclick="quitterMailMode()">✕ Annuler</button>
+  </div>
+
   <div class="table-wrap">
     <table id="main-table">
       <thead>
         <tr>
+          <th class="mail-cb-th" id="th-mail-cb" style="display:none"><input type="checkbox" id="cb-all" onchange="toggleSelectAll(this.checked)" title="Tout sélectionner"></th>
           <th>Nom Prénom</th>
           <th>Public</th>
           <th>Secteur</th>
@@ -1734,6 +1781,7 @@ async function onConnexionReussie(user) {
   }
   document.getElementById('tab-liens').style.display = 'inline-block';
   document.getElementById('tab-calendrier').style.display = 'inline-block';
+  document.getElementById('btn-mail-toggle').style.display = 'inline-flex';
 
   populateFiltres();
   renderTableau();
@@ -1762,6 +1810,9 @@ onAuthStateChanged(auth, async (user) => {
       document.getElementById('btn-vue-pdn').style.display = 'none';
       document.getElementById('btn-vue-pdn').textContent = 'Vue PdN';
       document.getElementById('btn-vue-pdn').classList.remove('mode-pdn');
+      document.getElementById('btn-mail-toggle').style.display = 'none';
+      mailModeActif = false;
+      document.getElementById('mail-mode-bar').classList.remove('visible');
       document.getElementById('screen-login').style.display = 'flex';
       document.getElementById('screen-app').style.display = 'none';
       document.getElementById('main-nav').style.display = 'none';
@@ -1827,7 +1878,7 @@ function getFiltered() {
 
 function renderTableau() {
   const filtered = getFiltered();
-  ficheList = filtered; // capturer immédiatement
+  ficheList = filtered;
   const tbody = document.getElementById('table-body');
   tbody.innerHTML = '';
   filtered.forEach((p, i) => {
@@ -1835,7 +1886,13 @@ function renderTableau() {
     const tels = [p.tel1, p.tel2].filter(Boolean).map(telLink).join('<br>');
     const rs = rsLink(p.rsLien);
     const email = p.email ? `<a href="mailto:${p.email}">${p.email}</a>` : '—';
-    let html = `
+    let html = '';
+    // Colonne checkbox mail (uniquement si mode mail actif et que le promeneur a un email)
+    if (mailModeActif) {
+      const hasEmail = !!p.email;
+      html += `<td class="mail-cb-cell">${hasEmail ? `<input type="checkbox" class="mail-cb" data-id="${p.id}" data-email="${p.email}" onchange="onMailCbChange()">` : ''}</td>`;
+    }
+    html += `
       <td class="td-nom" onclick="ouvrirFiche(${i})">${p.nom || '—'}${p.masque ? ' <span style="color:var(--rouge);font-size:0.78rem;font-weight:400">(masqué)</span>' : ''}</td>
       <td>${badgePublic(p.public)}</td>
       <td>${p.secteur || '—'}</td>
@@ -3548,6 +3605,101 @@ window.sauvegarderVacances = async function() {
     errEl.textContent = 'Erreur : ' + e.message;
     errEl.style.display = 'block';
   }
+};
+
+// ===== MODE MAIL =====
+let mailModeActif = false;
+
+window.toggleMailMode = function() {
+  mailModeActif = true;
+  document.getElementById('mail-mode-bar').classList.add('visible');
+  document.getElementById('btn-mail-toggle').style.display = 'none';
+  document.getElementById('th-mail-cb').style.display = '';
+  renderTableau();
+  updateMailCount();
+};
+
+window.quitterMailMode = function() {
+  mailModeActif = false;
+  document.getElementById('mail-mode-bar').classList.remove('visible');
+  document.getElementById('btn-mail-toggle').style.display = 'inline-flex';
+  document.getElementById('th-mail-cb').style.display = 'none';
+  document.getElementById('cb-all').checked = false;
+  renderTableau();
+};
+
+window.onMailCbChange = function() {
+  updateMailCount();
+  // Synchroniser la case "tout cocher"
+  const all = document.querySelectorAll('.mail-cb');
+  const checked = document.querySelectorAll('.mail-cb:checked');
+  const cbAll = document.getElementById('cb-all');
+  cbAll.checked = all.length > 0 && checked.length === all.length;
+  cbAll.indeterminate = checked.length > 0 && checked.length < all.length;
+};
+
+window.toggleSelectAll = function(forceValue) {
+  const cbs = document.querySelectorAll('.mail-cb');
+  const val = forceValue !== undefined ? forceValue : !document.getElementById('cb-all').checked;
+  cbs.forEach(cb => cb.checked = val);
+  if (forceValue === undefined) document.getElementById('cb-all').checked = val;
+  updateMailCount();
+};
+
+function updateMailCount() {
+  const checked = document.querySelectorAll('.mail-cb:checked');
+  const n = checked.length;
+  document.getElementById('mail-count-label').textContent =
+    n === 0 ? 'Aucun destinataire sélectionné' :
+    n === 1 ? '1 destinataire sélectionné' :
+    `${n} destinataires sélectionnés`;
+  const btn = document.getElementById('btn-envoyer');
+  btn.disabled = n === 0;
+}
+
+window.envoyerMail = function() {
+  const checked = document.querySelectorAll('.mail-cb:checked');
+  if (checked.length === 0) return;
+
+  const emails = Array.from(checked).map(cb => cb.dataset.email).filter(Boolean);
+  const to = emails.join(',');
+
+  // Corps du message : signature de l'utilisateur connecté
+  const p = currentUserData;
+  let prenom = '', nom = '';
+  if (p && p.nom) {
+    // Format attendu : "DUPONT Jean" ou "Jean DUPONT"
+    // On affiche tel quel dans la signature
+    const parts = p.nom.trim().split(/\s+/);
+    // Cherche la partie en majuscules (NOM) vs mixte (Prénom)
+    const nomParts = parts.filter(w => w === w.toUpperCase() && w.length > 1);
+    const prenomParts = parts.filter(w => w !== w.toUpperCase() || w.length <= 1);
+    prenom = prenomParts.join(' ');
+    nom = nomParts.join(' ');
+  }
+
+  const adresse = (p && p.adresse) ? p.adresse.trim() : '';
+  const tel = [p?.tel1, p?.tel2].filter(Boolean).join(' / ');
+  const nomComplet = (p && p.nom) ? p.nom : '';
+
+  const body = [
+    'Bonjour,',
+    '',
+    '...',
+    '',
+    nomComplet,
+    'Promeneur du Net 32',
+    adresse,
+    tel
+  ].filter((line, i) => {
+    // Ne pas inclure les lignes vides de fin si pas d'adresse/tel
+    if (i >= 4 && !line) return adresse || tel;
+    return true;
+  }).join('\n');
+
+  const subject = '';
+  const mailtoUrl = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  window.location.href = mailtoUrl;
 };
 
 // ===== EXPORT PDF =====
