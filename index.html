@@ -3697,8 +3697,11 @@ window.envoyerMail = function() {
     return true;
   }).join('\n');
 
-  const subject = '';
-  const mailtoUrl = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  // Outlook exige des points-virgules comme séparateurs (pas des virgules),
+  // et le champ "to" ne doit PAS être encodé (sinon il atterrit en Cc/Cci).
+  // Le body est encodé avec encodeURIComponent (sauts de ligne → %0A, etc.)
+  const toOutlook = emails.join(';');
+  const mailtoUrl = 'mailto:' + toOutlook + '?body=' + encodeURIComponent(body);
   window.location.href = mailtoUrl;
 };
 
