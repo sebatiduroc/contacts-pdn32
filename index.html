@@ -3579,12 +3579,12 @@ function renderVacancesForm() {
     const labelVal = (p.label || '').replace(/"/g, '&quot;');
     item.innerHTML =
       '<input type="text" value="' + labelVal + '" placeholder="Libellé" style="flex:1;max-width:180px;padding:6px 8px;font-size:0.85rem"' +
-      ' onchange="vacancesPeriodesTmp.find(x=>x._uid===\'' + uid + '\').label=this.value">' +
+      ' oninput="vacancesPeriodesTmp.find(x=>x._uid===\'' + uid + '\').label=this.value">' +
       '<input type="date" value="' + (p.debut || '') + '" style="padding:6px 8px;font-size:0.85rem"' +
-      ' onchange="vacancesPeriodesTmp.find(x=>x._uid===\'' + uid + '\').debut=this.value">' +
+      ' oninput="vacancesPeriodesTmp.find(x=>x._uid===\'' + uid + '\').debut=this.value">' +
       '<span style="color:var(--gris-texte)">→</span>' +
       '<input type="date" value="' + (p.fin || '') + '" style="padding:6px 8px;font-size:0.85rem"' +
-      ' onchange="vacancesPeriodesTmp.find(x=>x._uid===\'' + uid + '\').fin=this.value">' +
+      ' oninput="vacancesPeriodesTmp.find(x=>x._uid===\'' + uid + '\').fin=this.value">' +
       '<button class="btn btn-danger btn-sm" onclick="supprimerPeriodeVacances(\'' + uid + '\')">🗑️</button>';
     list.appendChild(item);
   });
