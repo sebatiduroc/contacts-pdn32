@@ -1865,8 +1865,8 @@ function getFiltered() {
   const sect = document.getElementById('filtre-secteur').value;
   const ref = document.getElementById('filtre-referent').value;
   return allPromeneurs.filter(p => {
-    // Masquer les fiches masquées sauf pour leur proprio et le coordinateur
-    if (p.masque && !isCoordinateur && (!currentUserData || currentUserData.id !== p.id)) return false;
+    // Masquer les fiches masquées sauf pour leur proprio et l'admin (pas en vue PdN)
+    if (p.masque && !isAdmin() && (!currentUserData || currentUserData.id !== p.id)) return false;
     if (nom && !p.nom?.toLowerCase().includes(nom) &&
         !p.email?.toLowerCase().includes(nom) &&
         !p.secteur?.toLowerCase().includes(nom)) return false;
