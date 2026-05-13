@@ -2968,8 +2968,12 @@ async function chargerVacances() {
     const snap = await getDocs(collection(db, 'cal_vacances'));
     if (!snap.empty) {
       calVacances = [];
-      snap.forEach(d => calVacances.push(d.data()));
-      return;
+      snap.forEach(d => {
+        const v = d.data();
+        // Ignorer les entrées corrompues (sans dates valides)
+        if (v.debut && v.fin) calVacances.push({ debut: v.debut, fin: v.fin, label: v.label || 'Vacances' });
+      });
+      if (calVacances.length > 0) return;
     }
   } catch(e) {}
 
@@ -3600,15 +3604,20 @@ window.sauvegarderVacances = async function() {
   const errEl = document.getElementById('err-vacances');
   errEl.style.display = 'none';
   for (const p of vacancesPeriodesTmp) {
-    if (!p.debut || !p.fin) { errEl.textContent = 'Toutes les périodes doivent avoir une date de début et de fin.'; errEl.style.display = 'block'; return; }
-    if (p.debut > p.fin) { errEl.textContent = `La date de début doit être avant la fin (${p.label}).`; errEl.style.display = 'block'; return; }
+    if (!p.debut || !p.fin) {
+      errEl.textContent = 'Période "' + (p.label || '?') + '" : date de début ou de fin manquante.';
+      errEl.style.display = 'block';
+      console.warn('Période invalide :', JSON.stringify(p));
+      return;
+    }
+    if (p.debut > p.fin) { errEl.textContent = 'La date de début doit être avant la fin (' + p.label + ').'; errEl.style.display = 'block'; return; }
   }
   try {
     const oldSnap = await getDocs(collection(db, 'cal_vacances'));
     const dels = [];
     oldSnap.forEach(d => dels.push(deleteDoc(doc(db, 'cal_vacances', d.id))));
     await Promise.all(dels);
-    const saves = vacancesPeriodesTmp.map((p, i) => setDoc(doc(db, 'cal_vacances', 'v' + i), p));
+    const saves = vacancesPeriodesTmp.map((p, i) => { const { _uid, ...data } = p; return setDoc(doc(db, 'cal_vacances', 'v' + i), data); });
     await Promise.all(saves);
     calVacances = [...vacancesPeriodesTmp];
     closeModal('modal-cal-vacances');
