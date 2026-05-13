@@ -1130,7 +1130,7 @@ th.mail-cb-th {
   <div id="mail-mode-bar">
     <span id="mail-count-label">0 destinataire sélectionné</span>
     <button class="btn btn-secondary btn-sm" onclick="toggleSelectAll()">☑️ Tout sélectionner</button>
-    <button class="btn btn-envoyer btn-sm" id="btn-envoyer" disabled onclick="envoyerMail()">📨 Envoyer</button>
+    <button class="btn btn-envoyer btn-sm" id="btn-envoyer" disabled onclick="envoyerMail()">📨 Rédiger</button>
     <button class="btn btn-secondary btn-sm" onclick="quitterMailMode()">✕ Annuler</button>
   </div>
 
@@ -1912,7 +1912,7 @@ function renderTableau() {
   // Compteur de résultats
   const n = filtered.length;
   const countEl = document.getElementById('filtre-count');
-  if (countEl) countEl.textContent = n === 0 ? 'Aucun résultat' : n === 1 ? '1 promeneur' : `${n} promeneurs`;
+  if (countEl) countEl.textContent = n === 0 ? 'Aucun résultat' : n === 1 ? '1 fiche' : `${n} fiches`;
   // Synchroniser la case "tout cocher" après re-render
   if (mailModeActif) syncCbAll();
 }
