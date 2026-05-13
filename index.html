@@ -3587,16 +3587,49 @@ function renderVacancesForm() {
     const uid = p._uid;
     const item = document.createElement('div');
     item.className = 'vacances-periode-item';
-    const labelVal = (p.label || '').replace(/"/g, '&quot;');
-    item.innerHTML =
-      '<input type="text" value="' + labelVal + '" placeholder="Libellé" style="flex:1;max-width:180px;padding:6px 8px;font-size:0.85rem"' +
-      ' onchange="vacancesPeriodesTmp.find(x=>x._uid===\'' + uid + '\').label=this.value">' +
-      '<input type="date" value="' + (p.debut || '') + '" style="padding:6px 8px;font-size:0.85rem"' +
-      ' onchange="vacancesPeriodesTmp.find(x=>x._uid===\'' + uid + '\').debut=this.value">' +
-      '<span style="color:var(--gris-texte)">→</span>' +
-      '<input type="date" value="' + (p.fin || '') + '" style="padding:6px 8px;font-size:0.85rem"' +
-      ' onchange="vacancesPeriodesTmp.find(x=>x._uid===\'' + uid + '\').fin=this.value">' +
-      '<button class="btn btn-danger btn-sm" onclick="supprimerPeriodeVacances(\'' + uid + '\')">🗑️</button>';
+
+    const inputLabel = document.createElement('input');
+    inputLabel.type = 'text';
+    inputLabel.value = p.label || '';
+    inputLabel.placeholder = 'Libellé';
+    inputLabel.style.cssText = 'flex:1;max-width:180px;padding:6px 8px;font-size:0.85rem';
+    inputLabel.addEventListener('change', () => {
+      const entry = vacancesPeriodesTmp.find(x => x._uid === uid);
+      if (entry) entry.label = inputLabel.value;
+    });
+
+    const inputDebut = document.createElement('input');
+    inputDebut.type = 'date';
+    inputDebut.value = p.debut || '';
+    inputDebut.style.cssText = 'padding:6px 8px;font-size:0.85rem';
+    inputDebut.addEventListener('change', () => {
+      const entry = vacancesPeriodesTmp.find(x => x._uid === uid);
+      if (entry) entry.debut = inputDebut.value;
+    });
+
+    const arrow = document.createElement('span');
+    arrow.style.color = 'var(--gris-texte)';
+    arrow.textContent = '→';
+
+    const inputFin = document.createElement('input');
+    inputFin.type = 'date';
+    inputFin.value = p.fin || '';
+    inputFin.style.cssText = 'padding:6px 8px;font-size:0.85rem';
+    inputFin.addEventListener('change', () => {
+      const entry = vacancesPeriodesTmp.find(x => x._uid === uid);
+      if (entry) entry.fin = inputFin.value;
+    });
+
+    const btnSuppr = document.createElement('button');
+    btnSuppr.className = 'btn btn-danger btn-sm';
+    btnSuppr.textContent = '🗑️';
+    btnSuppr.addEventListener('click', () => supprimerPeriodeVacances(uid));
+
+    item.appendChild(inputLabel);
+    item.appendChild(inputDebut);
+    item.appendChild(arrow);
+    item.appendChild(inputFin);
+    item.appendChild(btnSuppr);
     list.appendChild(item);
   });
 }
