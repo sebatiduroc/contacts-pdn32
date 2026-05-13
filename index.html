@@ -3561,8 +3561,19 @@ window.supprimerEvenement = async function(id, ds) {
 // ===== VACANCES ADMIN =====
 let vacancesPeriodesTmp = [];
 
-window.ouvrirModalVacances = function() {
-  vacancesPeriodesTmp = calVacances.map((v, i) => ({ ...v, _uid: v._uid || ('_' + i + '_' + Date.now()) }));
+window.ouvrirModalVacances = async function() {
+  // Recharger les vacances depuis Firebase à chaque ouverture
+  try {
+    const snap = await getDocs(collection(db, 'cal_vacances'));
+    calVacances = [];
+    snap.forEach(d => {
+      const v = d.data();
+      if (v.debut && v.fin) calVacances.push({ debut: v.debut, fin: v.fin, label: v.label || 'Vacances' });
+    });
+  } catch(e) {
+    console.warn('Impossible de recharger les vacances depuis Firebase:', e);
+  }
+  vacancesPeriodesTmp = calVacances.map((v, i) => ({ ...v, _uid: '_' + i + '_' + Date.now() }));
   renderVacancesForm();
   document.getElementById('modal-cal-vacances').classList.add('open');
 };
@@ -3579,12 +3590,12 @@ function renderVacancesForm() {
     const labelVal = (p.label || '').replace(/"/g, '&quot;');
     item.innerHTML =
       '<input type="text" value="' + labelVal + '" placeholder="Libellé" style="flex:1;max-width:180px;padding:6px 8px;font-size:0.85rem"' +
-      ' oninput="vacancesPeriodesTmp.find(x=>x._uid===\'' + uid + '\').label=this.value">' +
+      ' onchange="vacancesPeriodesTmp.find(x=>x._uid===\'' + uid + '\').label=this.value">' +
       '<input type="date" value="' + (p.debut || '') + '" style="padding:6px 8px;font-size:0.85rem"' +
-      ' oninput="vacancesPeriodesTmp.find(x=>x._uid===\'' + uid + '\').debut=this.value">' +
+      ' onchange="vacancesPeriodesTmp.find(x=>x._uid===\'' + uid + '\').debut=this.value">' +
       '<span style="color:var(--gris-texte)">→</span>' +
       '<input type="date" value="' + (p.fin || '') + '" style="padding:6px 8px;font-size:0.85rem"' +
-      ' oninput="vacancesPeriodesTmp.find(x=>x._uid===\'' + uid + '\').fin=this.value">' +
+      ' onchange="vacancesPeriodesTmp.find(x=>x._uid===\'' + uid + '\').fin=this.value">' +
       '<button class="btn btn-danger btn-sm" onclick="supprimerPeriodeVacances(\'' + uid + '\')">🗑️</button>';
     list.appendChild(item);
   });
@@ -3619,7 +3630,7 @@ window.sauvegarderVacances = async function() {
     await Promise.all(dels);
     const saves = vacancesPeriodesTmp.map((p, i) => { const { _uid, ...data } = p; return setDoc(doc(db, 'cal_vacances', 'v' + i), data); });
     await Promise.all(saves);
-    calVacances = [...vacancesPeriodesTmp];
+    calVacances = vacancesPeriodesTmp.map(({ _uid, ...rest }) => rest);
     closeModal('modal-cal-vacances');
     toast('✅ Vacances sauvegardées');
     renderCalendrier();
