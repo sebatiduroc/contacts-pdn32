@@ -3763,73 +3763,113 @@ window.genererEmargement = function() {
     .filter(p => mailSelectedIds.has(p.id))
     .sort((a, b) => (a.nom || '').localeCompare(b.nom || '', 'fr'));
 
-  const lignes = promeneurs.map(p => `
-    <tr>
-      <td>${p.nom || '—'}</td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-    </tr>`).join('');
+  const PAR_PAGE = 15;
+  const totalPages = Math.ceil(promeneurs.length / PAR_PAGE);
 
-  const html = `
-    <html><head><meta charset="UTF-8">
-    <style>
-      @page { size: A4 landscape; margin: 15mm 18mm; }
-      body { font-family: 'Arial', sans-serif; color: #1a3a5c; }
-      .entete { margin-bottom: 24px; }
-      .titre-principal {
-        font-size: 18px; font-weight: bold; border-bottom: 2px solid #1a3a5c;
-        padding-bottom: 6px; margin-bottom: 4px; color: #1a3a5c;
-        min-height: 32px;
-      }
-      .sous-titre {
-        font-size: 12px; color: #555; margin-bottom: 12px; font-style: italic;
-      }
-      .champ-date {
-        font-size: 12px; margin-bottom: 20px;
-        border-bottom: 1px solid #999; display: inline-block;
-        min-width: 280px; padding-bottom: 3px;
-        color: #aaa;
-      }
-      table { width: 100%; border-collapse: collapse; margin-top: 8px; }
-      thead tr th {
-        background: #1a3a5c; color: white;
-        padding: 8px 10px; text-align: left;
-        font-size: 11px; font-weight: 600;
-      }
-      thead tr th.col-sig {
-        width: 15%; text-align: center; color: #d0d8e4; font-style: italic; font-weight: 400;
-      }
-      tbody tr td {
-        padding: 10px 10px; border-bottom: 1px solid #ccc;
-        font-size: 11px; vertical-align: middle;
-      }
-      tbody tr td.col-sig {
-        width: 15%; border-left: 1px solid #ccc; min-height: 32px; height: 36px;
-      }
-      tbody tr:nth-child(even) td { background: #f8f6f3; }
-      .pied { margin-top: 24px; font-size: 10px; color: #999; text-align: right; }
-    </style></head><body>
-    <div class="entete">
-      <div class="titre-principal">&nbsp;</div>
-      <div class="sous-titre">Promeneurs du Net — Feuille d'émargement</div>
-      <div class="champ-date">Date&nbsp;:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</div>
-    </div>
-    <table>
+  // Construit le HTML d'un en-tête (pages impaires seulement)
+  function buildEntete() {
+    return `
+      <div class="entete">
+        <div class="titre-principal">&nbsp;</div>
+        <div class="sous-titre">Promeneurs du Net — Feuille d'émargement</div>
+        <div class="champ-date">Date&nbsp;:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</div>
+      </div>`;
+  }
+
+  // Construit le HTML d'un thead de tableau
+  function buildThead() {
+    return `
       <thead>
         <tr>
-          <th style="width:30%">Identité du promeneur</th>
+          <th class="col-nom">Identité du promeneur</th>
           <th class="col-sig">&nbsp;</th>
           <th class="col-sig">&nbsp;</th>
           <th class="col-sig">&nbsp;</th>
           <th class="col-sig">&nbsp;</th>
         </tr>
-      </thead>
-      <tbody>${lignes}</tbody>
-    </table>
-    <div class="pied">Promeneurs du Net 32 — ${promeneurs.length} participant${promeneurs.length > 1 ? 's' : ''}</div>
-    </body></html>`;
+      </thead>`;
+  }
+
+  // Découpe en pages de PAR_PAGE promeneurs
+  let pagesHtml = '';
+  for (let p = 0; p < totalPages; p++) {
+    const slice = promeneurs.slice(p * PAR_PAGE, (p + 1) * PAR_PAGE);
+    const pageNum = p + 1;
+    const isOdd = pageNum % 2 === 1;
+
+    const lignes = slice.map(pr => `
+      <tr>
+        <td class="col-nom">${pr.nom || '—'}</td>
+        <td class="col-sig"></td>
+        <td class="col-sig"></td>
+        <td class="col-sig"></td>
+        <td class="col-sig"></td>
+      </tr>`).join('');
+
+    pagesHtml += `
+      <div class="page${p < totalPages - 1 ? ' saut' : ''}">
+        ${isOdd ? buildEntete() : ''}
+        <table>${buildThead()}<tbody>${lignes}</tbody></table>
+        <div class="pied-page">${pageNum}&nbsp;/&nbsp;${totalPages}</div>
+      </div>`;
+  }
+
+  const html = `<!DOCTYPE html>
+<html><head><meta charset="UTF-8">
+<style>
+  @page { size: A4 portrait; margin: 15mm 18mm 12mm 18mm; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, sans-serif; color: #1a3a5c; font-size: 11px; }
+
+  .page { display: flex; flex-direction: column; min-height: 0; }
+  .page.saut { page-break-after: always; }
+
+  /* EN-TÊTE */
+  .entete { margin-bottom: 14px; }
+  .titre-principal {
+    font-size: 17px; font-weight: bold;
+    border-bottom: 2px solid #1a3a5c;
+    padding-bottom: 5px; margin-bottom: 3px;
+    min-height: 28px; color: #1a3a5c;
+  }
+  .sous-titre {
+    font-size: 11px; color: #555; font-style: italic; margin-bottom: 8px;
+  }
+  .champ-date {
+    font-size: 11px; display: inline-block;
+    border-bottom: 1px solid #888;
+    padding-bottom: 2px; color: #aaa;
+  }
+
+  /* TABLEAU */
+  table { width: 100%; border-collapse: collapse; }
+  thead tr th {
+    background: #1a3a5c; color: #fff;
+    padding: 7px 8px; text-align: center;
+    font-size: 10px; font-weight: 600;
+    border: 1px solid #1a3a5c;
+  }
+  th.col-nom { text-align: left; width: 40%; }
+  th.col-sig { width: 15%; color: #b0bdd0; font-style: italic; font-weight: 400; }
+
+  tbody tr td {
+    padding: 0 8px; height: 34px;
+    border: 1px solid #bbb;
+    vertical-align: middle;
+  }
+  td.col-nom { font-size: 11px; }
+  td.col-sig { width: 15%; }
+  tbody tr:nth-child(even) td { background: #f6f4f0; }
+
+  /* PIED DE PAGE */
+  .pied-page {
+    margin-top: 8px; font-size: 10px; color: #888;
+    text-align: center;
+  }
+</style>
+</head><body>
+${pagesHtml}
+</body></html>`;
 
   const w = window.open('', '_blank');
   w.document.write(html);
