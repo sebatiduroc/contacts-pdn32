@@ -694,6 +694,22 @@ th.mail-cb-th {
 #mail-mode-bar.visible { display: flex; }
 #mail-count-label { font-weight: 600; flex: 1; }
 
+#emargement-mode-bar {
+  display: none;
+  align-items: center;
+  gap: 10px;
+  background: #f0f7ee;
+  border: 1.5px solid var(--vert);
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+  font-size: 0.88rem;
+  color: var(--bleu);
+  flex-wrap: wrap;
+}
+#emargement-mode-bar.visible { display: flex; }
+#emargement-count-label { font-weight: 600; flex: 1; }
+
 /* ===== RESPONSIVE ===== */
 @media (max-width: 600px) {
   main { padding: 14px; }
@@ -1123,6 +1139,7 @@ th.mail-cb-th {
     <span id="filtre-count" style="font-size:0.82rem;color:var(--gris-texte);white-space:nowrap;align-self:center"></span>
     <div class="spacer"></div>
     <button class="btn btn-mail btn-sm" id="btn-mail-toggle" style="display:none" onclick="toggleMailMode()">✉️ Mail</button>
+    <button class="btn btn-secondary btn-sm" id="btn-emargement-toggle" style="display:none" onclick="toggleEmargementMode()">📋 Émargement</button>
     <button class="btn btn-secondary btn-sm" onclick="exportPDF()">📄 Export PDF</button>
   </div>
 
@@ -1132,6 +1149,14 @@ th.mail-cb-th {
     <button class="btn btn-secondary btn-sm" onclick="toggleSelectAll()">☑️ Tout sélectionner</button>
     <button class="btn btn-envoyer btn-sm" id="btn-envoyer" disabled onclick="envoyerMail()">📨 Envoyer</button>
     <button class="btn btn-secondary btn-sm" onclick="quitterMailMode()">✕ Annuler</button>
+  </div>
+
+  <!-- Barre mode émargement -->
+  <div id="emargement-mode-bar">
+    <span id="emargement-count-label">Aucun promeneur sélectionné</span>
+    <button class="btn btn-secondary btn-sm" onclick="toggleSelectAll()">☑️ Tout sélectionner</button>
+    <button class="btn btn-envoyer btn-sm" id="btn-generer-emargement" disabled onclick="genererEmargement()">📋 Générer PDF</button>
+    <button class="btn btn-secondary btn-sm" onclick="quitterEmargementMode()">✕ Annuler</button>
   </div>
 
   <div class="table-wrap">
@@ -1563,6 +1588,8 @@ window.toggleVuePdn = function() {
   document.getElementById('tab-admin').style.display = isAdmin() ? 'inline-block' : 'none';
   document.getElementById('th-dates').style.display = isAdmin() ? '' : 'none';
   document.getElementById('cal-btn-vacances').style.display = isAdmin() ? 'inline-flex' : 'none';
+  document.getElementById('btn-emargement-toggle').style.display = isAdmin() ? 'inline-flex' : 'none';
+  if (!isAdmin() && emargementModeActif) quitterEmargementMode();
   // Re-rendre le tableau et le calendrier pour tenir compte du changement
   renderTableau();
   if (document.getElementById('screen-calendrier').classList.contains('active')) {
@@ -1778,6 +1805,7 @@ async function onConnexionReussie(user) {
     document.getElementById('th-dates').style.display = '';
     document.getElementById('cal-btn-vacances').style.display = 'inline-flex';
     document.getElementById('btn-vue-pdn').style.display = 'inline-block';
+    document.getElementById('btn-emargement-toggle').style.display = 'inline-flex';
     vuePromeneur = false;
   }
   document.getElementById('tab-liens').style.display = 'inline-block';
@@ -1814,6 +1842,9 @@ onAuthStateChanged(auth, async (user) => {
       document.getElementById('btn-mail-toggle').style.display = 'none';
       mailModeActif = false;
       document.getElementById('mail-mode-bar').classList.remove('visible');
+      document.getElementById('btn-emargement-toggle').style.display = 'none';
+      emargementModeActif = false;
+      document.getElementById('emargement-mode-bar').classList.remove('visible');
       document.getElementById('screen-login').style.display = 'flex';
       document.getElementById('screen-app').style.display = 'none';
       document.getElementById('main-nav').style.display = 'none';
@@ -1888,10 +1919,12 @@ function renderTableau() {
     const rs = rsLink(p.rsLien);
     const email = p.email ? `<a href="mailto:${p.email}">${p.email}</a>` : '—';
     let html = '';
-    // Colonne checkbox mail (uniquement si mode mail actif et que le promeneur a un email)
+    // Colonne checkbox (mode mail ou mode émargement)
     if (mailModeActif) {
       const hasEmail = !!p.email;
       html += `<td class="mail-cb-cell">${hasEmail ? `<input type="checkbox" class="mail-cb" data-id="${p.id}" data-email="${p.email}" onchange="onMailCbChange(this)"${mailSelectedIds.has(p.id) ? ' checked' : ''}>` : ''}</td>`;
+    } else if (emargementModeActif) {
+      html += `<td class="mail-cb-cell"><input type="checkbox" class="mail-cb" data-id="${p.id}" onchange="onMailCbChange(this)"${mailSelectedIds.has(p.id) ? ' checked' : ''}></td>`;
     }
     html += `
       <td class="td-nom" onclick="ouvrirFiche(${i})">${p.nom || '—'}${p.masque ? ' <span style="color:var(--rouge);font-size:0.78rem;font-weight:400">(masqué)</span>' : ''}</td>
@@ -1914,7 +1947,7 @@ function renderTableau() {
   const countEl = document.getElementById('filtre-count');
   if (countEl) countEl.textContent = n === 0 ? 'Aucun résultat' : n === 1 ? '1 promeneur' : `${n} promeneurs`;
   // Synchroniser la case "tout cocher" après re-render
-  if (mailModeActif) syncCbAll();
+  if (mailModeActif || emargementModeActif) syncCbAll();
 }
 
 window.filtrerTableau = function() { renderTableau(); };
@@ -3678,6 +3711,8 @@ let mailModeActif = false;
 // Set persistant des IDs sélectionnés — survit aux changements de filtre
 let mailSelectedIds = new Set();
 
+let emargementModeActif = false;
+
 window.toggleMailMode = function() {
   mailModeActif = true;
   mailSelectedIds.clear();
@@ -3697,6 +3732,109 @@ window.quitterMailMode = function() {
   document.getElementById('cb-all').checked = false;
   document.getElementById('cb-all').indeterminate = false;
   renderTableau();
+};
+
+// ===== MODE ÉMARGEMENT =====
+window.toggleEmargementMode = function() {
+  emargementModeActif = true;
+  mailSelectedIds.clear();
+  document.getElementById('emargement-mode-bar').classList.add('visible');
+  document.getElementById('btn-emargement-toggle').style.display = 'none';
+  document.getElementById('th-mail-cb').style.display = '';
+  renderTableau();
+  updateMailCount();
+};
+
+window.quitterEmargementMode = function() {
+  emargementModeActif = false;
+  mailSelectedIds.clear();
+  document.getElementById('emargement-mode-bar').classList.remove('visible');
+  document.getElementById('btn-emargement-toggle').style.display = 'inline-flex';
+  document.getElementById('th-mail-cb').style.display = 'none';
+  document.getElementById('cb-all').checked = false;
+  document.getElementById('cb-all').indeterminate = false;
+  renderTableau();
+};
+
+window.genererEmargement = function() {
+  if (mailSelectedIds.size === 0) return;
+
+  const promeneurs = allPromeneurs
+    .filter(p => mailSelectedIds.has(p.id))
+    .sort((a, b) => (a.nom || '').localeCompare(b.nom || '', 'fr'));
+
+  const lignes = promeneurs.map(p => `
+    <tr>
+      <td>${p.nom || '—'}</td>
+      <td></td>
+      <td></td>
+      <td></td>
+      <td></td>
+    </tr>`).join('');
+
+  const html = `
+    <html><head><meta charset="UTF-8">
+    <style>
+      @page { size: A4 landscape; margin: 15mm 18mm; }
+      body { font-family: 'Arial', sans-serif; color: #1a3a5c; }
+      .entete { margin-bottom: 24px; }
+      .titre-principal {
+        font-size: 18px; font-weight: bold; border-bottom: 2px solid #1a3a5c;
+        padding-bottom: 6px; margin-bottom: 4px; color: #1a3a5c;
+        min-height: 32px;
+      }
+      .sous-titre {
+        font-size: 12px; color: #555; margin-bottom: 12px; font-style: italic;
+      }
+      .champ-date {
+        font-size: 12px; margin-bottom: 20px;
+        border-bottom: 1px solid #999; display: inline-block;
+        min-width: 280px; padding-bottom: 3px;
+        color: #aaa;
+      }
+      table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+      thead tr th {
+        background: #1a3a5c; color: white;
+        padding: 8px 10px; text-align: left;
+        font-size: 11px; font-weight: 600;
+      }
+      thead tr th.col-sig {
+        width: 15%; text-align: center; color: #d0d8e4; font-style: italic; font-weight: 400;
+      }
+      tbody tr td {
+        padding: 10px 10px; border-bottom: 1px solid #ccc;
+        font-size: 11px; vertical-align: middle;
+      }
+      tbody tr td.col-sig {
+        width: 15%; border-left: 1px solid #ccc; min-height: 32px; height: 36px;
+      }
+      tbody tr:nth-child(even) td { background: #f8f6f3; }
+      .pied { margin-top: 24px; font-size: 10px; color: #999; text-align: right; }
+    </style></head><body>
+    <div class="entete">
+      <div class="titre-principal">&nbsp;</div>
+      <div class="sous-titre">Promeneurs du Net — Feuille d'émargement</div>
+      <div class="champ-date">Date&nbsp;:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</div>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th style="width:30%">Identité du promeneur</th>
+          <th class="col-sig">&nbsp;</th>
+          <th class="col-sig">&nbsp;</th>
+          <th class="col-sig">&nbsp;</th>
+          <th class="col-sig">&nbsp;</th>
+        </tr>
+      </thead>
+      <tbody>${lignes}</tbody>
+    </table>
+    <div class="pied">Promeneurs du Net 32 — ${promeneurs.length} participant${promeneurs.length > 1 ? 's' : ''}</div>
+    </body></html>`;
+
+  const w = window.open('', '_blank');
+  w.document.write(html);
+  w.document.close();
+  w.print();
 };
 
 // Appelé quand une case individuelle change
@@ -3739,6 +3877,12 @@ function updateMailCount() {
     n === 1 ? '1 destinataire sélectionné' :
     `${n} destinataires sélectionnés`;
   document.getElementById('btn-envoyer').disabled = n === 0;
+  // Mise à jour aussi du compteur émargement
+  document.getElementById('emargement-count-label').textContent =
+    n === 0 ? 'Aucun promeneur sélectionné' :
+    n === 1 ? '1 promeneur sélectionné' :
+    `${n} promeneurs sélectionnés`;
+  document.getElementById('btn-generer-emargement').disabled = n === 0;
 }
 
 window.envoyerMail = function() {
