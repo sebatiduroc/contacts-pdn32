@@ -567,16 +567,43 @@ td a:hover { text-decoration: underline; }
 /* adresse avec sauts de ligne */
 .fiche-field-value.pre { white-space: pre-line; }
 
-/* Pastilles carte pivotées pour éviter le chevauchement — le pivot a lieu
-   dans un wrapper interne, indépendant du positionnement géré par Leaflet */
-.leaflet-div-icon.marker-pivotee {
+/* Signet "groupe" : plusieurs promeneurs superposés à l'écran sont fusionnés
+   en une seule pastille numérotée. */
+.leaflet-div-icon.marker-groupe {
   background: transparent;
   border: none;
 }
-.marker-pivotee-wrap {
-  width: 25px; height: 41px;
+.marker-groupe-badge {
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  background: var(--bleu);
+  border: 2px solid var(--blanc);
+  box-shadow: var(--ombre-forte);
+  color: var(--blanc);
+  font-weight: 700;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
 }
-.marker-pivotee-wrap img { width: 25px; height: 41px; display: block; }
+.marker-groupe-badge.groupe-max { background: var(--rouge); }
+
+/* Contenu multi-entrées de la carte au survol (groupe simplifié ou détail complet) */
+.hc-groupe-titre {
+  font-weight: 700;
+  color: var(--bleu);
+  margin-bottom: 4px;
+  font-size: 0.82rem;
+}
+.hc-groupe-liste { list-style: none; margin: 0; padding: 0; }
+.hc-groupe-liste li {
+  padding: 3px 0;
+  font-size: 0.82rem;
+  border-top: 1px solid var(--gris);
+}
+.hc-groupe-liste li:first-child { border-top: none; }
+.hc-groupe-entree + .hc-groupe-entree { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--gris); }
 
 /* ===== TOOLTIP SURVOL CARTE ===== */
 #map-hover-card {
@@ -2561,7 +2588,9 @@ async function initCarte() {
 const hoverCard = document.getElementById('map-hover-card');
 let hoverCardTimeout = null;
 
-function showHoverCard(p, mouseEvent) {
+// Bloc HTML du détail complet d'un promeneur, réutilisé pour un signet simple
+// et pour chacune des entrées d'un signet groupe resté multiple au zoom maximum.
+function detailEntreeHtml(p) {
   const tels = [p.tel1, p.tel2].filter(Boolean);
   const telHtml = tels.length
     ? `<div class="hc-row"><span>📞</span><span>${tels.map(t => `<a href="tel:${t}">${t}</a>`).join(' / ')}</span></div>`
@@ -2576,11 +2605,40 @@ function showHoverCard(p, mouseEvent) {
     ? `<div class="hc-row"><span>👤</span><span>${p.referent}</span></div>`
     : '';
 
-  hoverCard.innerHTML = `
+  return `
     <div class="hc-nom">${p.nom || '—'}</div>
     <div class="hc-badges">${badgePublic(p.public)}</div>
     ${secteurHtml}${telHtml}${emailHtml}${referentHtml}
   `;
+}
+
+// Liste simplifiée d'un groupe de promeneurs superposés (avant le zoom maximum) :
+// une ligne "Nom - Ville" par promeneur.
+function listeSimplifieeGroupeHtml(entries) {
+  const lignes = entries.map(({ p }) => {
+    const ville = p.secteur || '';
+    return `<li>${p.nom || '—'}${ville ? ' - ' + ville : ''}</li>`;
+  }).join('');
+  return `
+    <div class="hc-groupe-titre">${entries.length} promeneurs à cet endroit</div>
+    <ul class="hc-groupe-liste">${lignes}</ul>
+  `;
+}
+
+// Détail complet d'un groupe resté multiple au zoom maximum : les mêmes infos
+// qu'un signet simple, empilées pour chacun des promeneurs concernés.
+function detailGroupeHtml(entries) {
+  return entries.map(({ p }) => `<div class="hc-groupe-entree">${detailEntreeHtml(p)}</div>`).join('');
+}
+
+function showHoverCard(p, mouseEvent) {
+  hoverCard.innerHTML = detailEntreeHtml(p);
+  positionHoverCard(mouseEvent);
+  hoverCard.classList.add('visible');
+}
+
+function showHoverCardGroupe(entries, mouseEvent, detailComplet) {
+  hoverCard.innerHTML = detailComplet ? detailGroupeHtml(entries) : listeSimplifieeGroupeHtml(entries);
   positionHoverCard(mouseEvent);
   hoverCard.classList.add('visible');
 }
@@ -2605,17 +2663,14 @@ document.addEventListener('mousemove', e => {
   if (hoverCard.classList.contains('visible')) positionHoverCard(e);
 });
 
-// Icône "pastille" pivotée autour de sa pointe (bas du marqueur), pour désuperposer
-// des contacts partageant les mêmes coordonnées GPS.
-function iconePivotee(angleDeg) {
+// Icône "groupe" : pastille numérotée remplaçant plusieurs signets superposés à l'écran.
+// Elle passe en rouge quand on est au zoom maximum et que le groupe n'a toujours pas pu être séparé.
+function iconeGroupe(count, estAuZoomMax) {
   return L.divIcon({
-    className: 'marker-pivotee',
-    html: `<div class="marker-pivotee-wrap" style="transform:rotate(${angleDeg}deg);transform-origin:50% 100%">
-             <img src="https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png">
-           </div>`,
-    iconSize: [25, 41],
-    iconAnchor: [12, 41],
-    popupAnchor: [1, -34]
+    className: 'marker-groupe',
+    html: `<div class="marker-groupe-badge${estAuZoomMax ? ' groupe-max' : ''}">${count}</div>`,
+    iconSize: [34, 34],
+    iconAnchor: [17, 17]
   });
 }
 
@@ -2647,6 +2702,19 @@ function clusterPourChevauchement(points, seuilPx) {
   return [...groupes.values()];
 }
 
+// Zoome et recentre la carte pour tenter de séparer les promeneurs d'un groupe superposé.
+// Si les coordonnées sont strictement identiques, il est inutile d'essayer de les écarter :
+// on va directement au zoom maximum, où le signet groupe basculera en mode "détail complet".
+function zoomVersGroupe(entries) {
+  const maxZoom = mapInstance.getMaxZoom();
+  const bounds = L.latLngBounds(entries.map(({ latF, lngF }) => L.latLng(latF, lngF)));
+  if (bounds.getNorthEast().equals(bounds.getSouthWest())) {
+    mapInstance.setView(bounds.getCenter(), maxZoom);
+  } else {
+    mapInstance.fitBounds(bounds.pad(0.8), { maxZoom });
+  }
+}
+
 function updateMarkers() {
   mapMarkers.forEach(m => mapInstance.removeLayer(m));
   mapMarkers = [];
@@ -2667,21 +2735,41 @@ function updateMarkers() {
 
   // Regroupement selon la distance à l'écran au zoom courant (donc pas seulement selon les coordonnées GPS)
   const groupes = clusterPourChevauchement(points, SEUIL_CHEVAUCHEMENT_PX);
+  const auZoomMax = mapInstance.getZoom() >= mapInstance.getMaxZoom();
 
   groupes.forEach(entries => {
-    entries.forEach((entry, idx) => {
-      const { p, lat, lng, latF, lngF } = entry;
-      // Au-delà de la première pastille d'un groupe superposé, on pivote de 30°, 60°, 90°… autour de la pointe
-      const marker = idx > 0
-        ? L.marker([latF, lngF], { icon: iconePivotee(idx * 30) })
-        : L.marker([latF, lngF]);
+    // Un seul promeneur à cet endroit : signet classique, comportement inchangé.
+    if (entries.length === 1) {
+      const { p, lat, lng, latF, lngF } = entries[0];
+      const marker = L.marker([latF, lngF]);
       marker.bindPopup(`<strong>${p.nom}</strong><br>${badgePublic(p.public)}<br>${p.secteur || ''}`);
       marker.on('click', () => selectionnerPointRoute({ ...p, lat, lng }, marker));
       marker.on('mouseover', e => showHoverCard(p, e.originalEvent));
       marker.on('mouseout', hideHoverCard);
       marker.addTo(mapInstance);
       mapMarkers.push(marker);
-    });
+      return;
+    }
+
+    // Plusieurs promeneurs superposés à l'écran : un seul signet, portant leur nombre,
+    // placé au centre géographique du groupe.
+    const centreLat = entries.reduce((s, e) => s + e.latF, 0) / entries.length;
+    const centreLng = entries.reduce((s, e) => s + e.lngF, 0) / entries.length;
+    const marker = L.marker([centreLat, centreLng], { icon: iconeGroupe(entries.length, auZoomMax) });
+
+    if (auZoomMax) {
+      // Zoom maximum atteint et le groupe n'a toujours pas pu être séparé : clic et survol
+      // donnent les mêmes infos que pour un signet simple, mais pour chacun des promeneurs.
+      marker.bindPopup(detailGroupeHtml(entries));
+      marker.on('mouseover', e => showHoverCardGroupe(entries, e.originalEvent, true));
+    } else {
+      // Survol : liste simplifiée. Clic : on zoome pour tenter de séparer le groupe.
+      marker.on('click', () => zoomVersGroupe(entries));
+      marker.on('mouseover', e => showHoverCardGroupe(entries, e.originalEvent, false));
+    }
+    marker.on('mouseout', hideHoverCard);
+    marker.addTo(mapInstance);
+    mapMarkers.push(marker);
   });
 }
 
