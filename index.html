@@ -1429,6 +1429,10 @@ th.mail-cb-th {
         </div>
       </div>
       <div class="form-group">
+        <label>Autres réseaux sociaux (un lien par ligne)</label>
+        <textarea id="edit-autres-rs" rows="3" placeholder="ex: https://instagram.com/moncompte&#10;https://linkedin.com/in/moncompte"></textarea>
+      </div>
+      <div class="form-group">
         <label>Coordonnées GPS (format : 43.842655,0.739157)</label>
         <input type="text" id="edit-gps" placeholder="ex: 43.842655,0.739157">
       </div>
@@ -1717,6 +1721,25 @@ function rsLink(val) {
   }
   // Identifiant simple sans espace → profil direct
   return `<a href="https://facebook.com/${val}" target="_blank">${val}</a>`;
+}
+
+// Champ générique "Autres réseaux sociaux" : plusieurs liens possibles (un par ligne).
+// À la différence de rsLink (spécifique Facebook), on ne devine pas la plateforme :
+// une ligne n'est transformée en lien cliquable que si elle ressemble déjà à une URL.
+function autresRsLinks(val) {
+  if (!val) return '—';
+  const lignes = val.split('\n').map(l => l.trim()).filter(Boolean);
+  if (lignes.length === 0) return '—';
+  return lignes.map(ligne => {
+    if (ligne.startsWith('http://') || ligne.startsWith('https://')) {
+      return `<a href="${ligne}" target="_blank">${ligne}</a>`;
+    }
+    if (ligne.startsWith('www.')) {
+      return `<a href="https://${ligne}" target="_blank">${ligne}</a>`;
+    }
+    // Ni URL ni "www." → affiché tel quel, sans supposer une plateforme précise
+    return ligne;
+  }).join('<br>');
 }
 
 function badgePublic(pub) {
@@ -2094,6 +2117,10 @@ function renderFiche() {
           <div class="fiche-field-value">${rs}</div>
         </div>
         <div class="fiche-field">
+          <div class="fiche-field-label">Autres réseaux sociaux</div>
+          <div class="fiche-field-value">${autresRsLinks(p.autresRS)}</div>
+        </div>
+        <div class="fiche-field">
           <div class="fiche-field-label">Site national</div>
           <div class="fiche-field-value">${site}</div>
         </div>
@@ -2131,6 +2158,7 @@ window.ouvrirEdit = function(id) {
   document.getElementById('edit-adresse').value = p.adresse || '';
   document.getElementById('edit-email').value = p.email || '';
   document.getElementById('edit-rs-lien').value = p.rsLien || '';
+  document.getElementById('edit-autres-rs').value = p.autresRS || '';
   document.getElementById('edit-site').value = p.site || '';
   // GPS combiné
   const gps = (p.lat && p.lng) ? `${p.lat},${p.lng}` : (p.gps || '');
@@ -2168,6 +2196,7 @@ window.sauvegarderFiche = async function() {
     adresse: document.getElementById('edit-adresse').value,
     email: document.getElementById('edit-email').value.trim(),
     rsLien: document.getElementById('edit-rs-lien').value.trim(),
+    autresRS: document.getElementById('edit-autres-rs').value.trim(),
     site: document.getElementById('edit-site').value.trim(),
     gps: gpsRaw, lat, lng,
     dateMaj: serverTimestamp()
@@ -2177,7 +2206,7 @@ window.sauvegarderFiche = async function() {
   const champs = {
     nom: 'Nom Prénom', public: 'Public', secteur: 'Secteur', referent: 'Référent CAF',
     tel1: 'Téléphone 1', tel2: 'Téléphone 2', adresse: 'Adresse',
-    email: 'Email', rsLien: 'Facebook',
+    email: 'Email', rsLien: 'Facebook', autresRS: 'Autres réseaux sociaux',
     site: 'Site national', gps: 'GPS'
   };
   let diff = '';
@@ -2263,6 +2292,7 @@ function renderMaFiche() {
           <div class="fiche-field"><div class="fiche-field-label">Email professionnel</div><div class="fiche-field-value">${p.email ? `<a href="mailto:${p.email}">${p.email}</a>` : '—'}</div></div>
           <div class="fiche-field"><div class="fiche-field-label">Adresse postale</div><div class="fiche-field-value pre">${p.adresse || '—'}</div></div>
           <div class="fiche-field"><div class="fiche-field-label">Facebook</div><div class="fiche-field-value">${rsLink(p.rsLien)}</div></div>
+          <div class="fiche-field"><div class="fiche-field-label">Autres réseaux sociaux</div><div class="fiche-field-value">${autresRsLinks(p.autresRS)}</div></div>
           <div class="fiche-field"><div class="fiche-field-label">Site national</div><div class="fiche-field-value">${site}</div></div>
           <div class="fiche-field"><div class="fiche-field-label">Secteur</div><div class="fiche-field-value">${p.secteur || '—'}</div></div>
           <div class="fiche-field"><div class="fiche-field-label">Référent CAF</div><div class="fiche-field-value">${p.referent || '—'}</div></div>
@@ -2827,7 +2857,7 @@ window.genererCode = async function() {
     // Créer la fiche vide
     const ref = await addDoc(collection(db, 'promeneurs'), {
   nom: nomPdn, public: '', secteur: '', referent: '',
-  tel1: '', tel2: '', adresse: '', email: '', rsLien: '',
+  tel1: '', tel2: '', adresse: '', email: '', rsLien: '', autresRS: '',
   site: '', gps: '', lat: '', lng: '', uid: null, dateMaj: serverTimestamp()
 });
     ficheId = ref.id;
@@ -2866,7 +2896,7 @@ window.creerFicheVide = async function() {
   if (!nom) { toast('Veuillez saisir un nom'); return; }
   const ref = await addDoc(collection(db, 'promeneurs'), {
     nom, public: 'Jeunesse', secteur: '', referent: '',
-    tel1: '', tel2: '', adresse: '', email: '', rsLien: '',
+    tel1: '', tel2: '', adresse: '', email: '', rsLien: '', autresRS: '',
     site: '', gps: '', lat: '', lng: '', dateMaj: serverTimestamp()
   });
   allPromeneurs.push({ id: ref.id, nom, public: 'Jeunesse' });
