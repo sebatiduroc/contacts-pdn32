@@ -567,6 +567,17 @@ td a:hover { text-decoration: underline; }
 /* adresse avec sauts de ligne */
 .fiche-field-value.pre { white-space: pre-line; }
 
+/* Pastilles carte pivotées pour éviter le chevauchement — le pivot a lieu
+   dans un wrapper interne, indépendant du positionnement géré par Leaflet */
+.leaflet-div-icon.marker-pivotee {
+  background: transparent;
+  border: none;
+}
+.marker-pivotee-wrap {
+  width: 25px; height: 41px;
+}
+.marker-pivotee-wrap img { width: 25px; height: 41px; display: block; }
+
 /* ===== TOOLTIP SURVOL CARTE ===== */
 #map-hover-card {
   position: fixed;
@@ -2402,6 +2413,10 @@ async function initCarte() {
     wheelPxPerZoomLevel: 120
   }).setView([43.65, 0.58], 9);
 
+  // Le chevauchement des pastilles dépend de leur distance à l'écran, donc du zoom :
+  // on recalcule les regroupements/rotations à chaque changement de niveau de zoom.
+  mapInstance.on('zoomend', () => { if (allPromeneurs.length) updateMarkers(); });
+
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© OpenStreetMap contributors'
   }).addTo(mapInstance);
@@ -2560,18 +2575,76 @@ document.addEventListener('mousemove', e => {
   if (hoverCard.classList.contains('visible')) positionHoverCard(e);
 });
 
+// Icône "pastille" pivotée autour de sa pointe (bas du marqueur), pour désuperposer
+// des contacts partageant les mêmes coordonnées GPS.
+function iconePivotee(angleDeg) {
+  return L.divIcon({
+    className: 'marker-pivotee',
+    html: `<div class="marker-pivotee-wrap" style="transform:rotate(${angleDeg}deg);transform-origin:50% 100%">
+             <img src="https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png">
+           </div>`,
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34]
+  });
+}
+
+// Distance en dessous de laquelle deux pastilles sont considérées comme superposées à l'écran,
+// exprimée en pixels (indépendante du niveau de zoom, donc recalculée à chaque zoom).
+const SEUIL_CHEVAUCHEMENT_PX = 24;
+
+// Regroupe les points dont la distance à l'écran (au zoom courant) est inférieure au seuil.
+// Union-Find simple : si A chevauche B et B chevauche C, les trois sont dans le même groupe
+// même si A et C sont un peu plus éloignés l'un de l'autre.
+function clusterPourChevauchement(points, seuilPx) {
+  const n = points.length;
+  const zoom = mapInstance.getZoom();
+  const px = points.map(pt => mapInstance.project([pt.latF, pt.lngF], zoom));
+  const parent = Array.from({ length: n }, (_, i) => i);
+  function find(x) { while (parent[x] !== x) { parent[x] = parent[parent[x]]; x = parent[x]; } return x; }
+  function union(a, b) { const ra = find(a), rb = find(b); if (ra !== rb) parent[ra] = rb; }
+  for (let i = 0; i < n; i++) {
+    for (let j = i + 1; j < n; j++) {
+      if (px[i].distanceTo(px[j]) < seuilPx) union(i, j);
+    }
+  }
+  const groupes = new Map();
+  for (let i = 0; i < n; i++) {
+    const r = find(i);
+    if (!groupes.has(r)) groupes.set(r, []);
+    groupes.get(r).push(points[i]);
+  }
+  return [...groupes.values()];
+}
+
 function updateMarkers() {
   mapMarkers.forEach(m => mapInstance.removeLayer(m));
   mapMarkers = [];
   const pub = document.getElementById('carte-filtre-public').value;
+
+  const points = [];
   allPromeneurs.filter(p => {
     const hasGps = (p.gps || (p.lat && p.lng));
     return hasGps && (!pub || p.public === pub || p.public === 'Jeunesse + Parentalité');
   }).forEach(p => {
-      const lat = p.lat || (p.gps ? p.gps.split(',')[0].trim() : null);
-      const lng = p.lng || (p.gps ? p.gps.split(',')[1].trim() : null);
-      if (!lat || !lng) return;
-      const marker = L.marker([parseFloat(lat), parseFloat(lng)]);
+    const lat = p.lat || (p.gps ? p.gps.split(',')[0].trim() : null);
+    const lng = p.lng || (p.gps ? p.gps.split(',')[1].trim() : null);
+    if (!lat || !lng) return;
+    const latF = parseFloat(lat), lngF = parseFloat(lng);
+    if (isNaN(latF) || isNaN(lngF)) return;
+    points.push({ p, lat, lng, latF, lngF });
+  });
+
+  // Regroupement selon la distance à l'écran au zoom courant (donc pas seulement selon les coordonnées GPS)
+  const groupes = clusterPourChevauchement(points, SEUIL_CHEVAUCHEMENT_PX);
+
+  groupes.forEach(entries => {
+    entries.forEach((entry, idx) => {
+      const { p, lat, lng, latF, lngF } = entry;
+      // Au-delà de la première pastille d'un groupe superposé, on pivote de 30°, 60°, 90°… autour de la pointe
+      const marker = idx > 0
+        ? L.marker([latF, lngF], { icon: iconePivotee(idx * 30) })
+        : L.marker([latF, lngF]);
       marker.bindPopup(`<strong>${p.nom}</strong><br>${badgePublic(p.public)}<br>${p.secteur || ''}`);
       marker.on('click', () => selectionnerPointRoute({ ...p, lat, lng }, marker));
       marker.on('mouseover', e => showHoverCard(p, e.originalEvent));
@@ -2579,6 +2652,7 @@ function updateMarkers() {
       marker.addTo(mapInstance);
       mapMarkers.push(marker);
     });
+  });
 }
 
 window.filtrerCarte = function() { updateMarkers(); };
