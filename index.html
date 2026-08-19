@@ -2474,6 +2474,10 @@ async function initCarte() {
   // on recalcule les regroupements/rotations à chaque changement de niveau de zoom.
   mapInstance.on('zoomend', () => { if (allPromeneurs.length) updateMarkers(); });
 
+  // Sur mobile/tactile, un "tap" déclenche à la fois le survol (tooltip) et le clic (popup) :
+  // dès qu'un popup s'ouvre, on masque systématiquement l'étiquette de survol pour éviter le doublon.
+  mapInstance.on('popupopen', hideHoverCard);
+
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© OpenStreetMap contributors'
   }).addTo(mapInstance);
@@ -2742,8 +2746,8 @@ function updateMarkers() {
     if (entries.length === 1) {
       const { p, lat, lng, latF, lngF } = entries[0];
       const marker = L.marker([latF, lngF]);
-      marker.bindPopup(`<strong>${p.nom}</strong><br>${badgePublic(p.public)}<br>${p.secteur || ''}`);
-      marker.on('click', () => selectionnerPointRoute({ ...p, lat, lng }, marker));
+      marker.bindPopup(detailEntreeHtml(p));
+      marker.on('click', () => { hideHoverCard(); selectionnerPointRoute({ ...p, lat, lng }, marker); });
       marker.on('mouseover', e => showHoverCard(p, e.originalEvent));
       marker.on('mouseout', hideHoverCard);
       marker.addTo(mapInstance);
@@ -2764,7 +2768,7 @@ function updateMarkers() {
       marker.on('mouseover', e => showHoverCardGroupe(entries, e.originalEvent, true));
     } else {
       // Survol : liste simplifiée. Clic : on zoome pour tenter de séparer le groupe.
-      marker.on('click', () => zoomVersGroupe(entries));
+      marker.on('click', () => { hideHoverCard(); zoomVersGroupe(entries); });
       marker.on('mouseover', e => showHoverCardGroupe(entries, e.originalEvent, false));
     }
     marker.on('mouseout', hideHoverCard);
