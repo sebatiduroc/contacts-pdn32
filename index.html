@@ -2762,9 +2762,12 @@ function updateMarkers() {
     const marker = L.marker([centreLat, centreLng], { icon: iconeGroupe(entries.length, auZoomMax) });
 
     if (auZoomMax) {
-      // Zoom maximum atteint et le groupe n'a toujours pas pu être séparé : clic et survol
-      // donnent les mêmes infos que pour un signet simple, mais pour chacun des promeneurs.
+      // Zoom maximum atteint et le groupe n'a toujours pas pu être séparé (signets vraiment
+      // indissociables) : on le traite comme un signet simple pour l'itinéraire — le clic le
+      // sélectionne en bloc, le trajet affiché en bas de carte indique alors la liste des
+      // promeneurs concernés plutôt qu'un seul nom.
       marker.bindPopup(detailGroupeHtml(entries));
+      marker.on('click', () => { hideHoverCard(); selectionnerPointRoute(pointGroupePourRoute(entries, centreLat, centreLng), marker); });
       marker.on('mouseover', e => showHoverCardGroupe(entries, e.originalEvent, true));
     } else {
       // Survol : liste simplifiée. Clic : on zoome pour tenter de séparer le groupe.
@@ -2778,6 +2781,15 @@ function updateMarkers() {
 }
 
 window.filtrerCarte = function() { updateMarkers(); };
+
+// Construit un point de trajet représentant tout un groupe de promeneurs indissociables
+// (mêmes coordonnées à l'écran même au zoom maximum) : le nom affiché dans le panneau
+// d'itinéraire devient la liste de ces promeneurs plutôt qu'un nom unique.
+function pointGroupePourRoute(entries, centreLat, centreLng) {
+  const noms = entries.map(({ p }) => p.nom || '—');
+  const label = `${entries.length} promeneurs (${noms.join(', ')})`;
+  return { nom: label, lat: String(centreLat), lng: String(centreLng) };
+}
 
 function selectionnerPointRoute(p, marker) {
   if (!p.lat || !p.lng) return;
