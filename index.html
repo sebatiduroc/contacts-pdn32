@@ -3488,6 +3488,7 @@ function hideCalHover() {
 }
 
 window.calNav = function(dir) {
+  const modeAnneeVersSuivante = calMode === 'annee' && dir === 1;
   if (calMode === 'mois') {
     calMonth += dir;
     if (calMonth > 11) { calMonth = 0; calYear++; }
@@ -3496,7 +3497,21 @@ window.calNav = function(dir) {
     calYear += dir;
   }
   renderCalendrier();
+  if (modeAnneeVersSuivante) scrollVersJanvier();
 };
+
+function scrollVersJanvier() {
+  // Recale la vue avec Janvier tout en haut lors du passage à l'année suivante
+  requestAnimationFrame(() => {
+    const el = document.querySelector('.cal-annee-premier-mois');
+    if (!el) return;
+    const headerEl = document.querySelector('header');
+    const headerHeight = headerEl ? headerEl.offsetHeight : 0;
+    const rect = el.getBoundingClientRect();
+    const scrollTop = window.pageYOffset + rect.top - headerHeight - 12;
+    window.scrollTo({ top: Math.max(scrollTop, 0), behavior: 'smooth' });
+  });
+}
 
 window.calToday = function() {
   const now = new Date();
@@ -3534,6 +3549,9 @@ function renderCalendrier() {
       const mini = renderMiniMonth(calYear, m, todayStr);
       if (calYear === today.getFullYear() && m === today.getMonth()) {
         mini.id = 'cal-mois-courant';
+      }
+      if (m === 0) {
+        mini.classList.add('cal-annee-premier-mois');
       }
       grid.appendChild(mini);
     }
@@ -3693,6 +3711,7 @@ function renderMiniMonth(year, month, todayStr) {
       e.stopPropagation();
       calYear++;
       renderCalendrier();
+      scrollVersJanvier();
     });
     title.appendChild(arrowNext);
   }
