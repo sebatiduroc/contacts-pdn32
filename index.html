@@ -3392,87 +3392,17 @@ async function chargerEvenements() {
 }
 
 async function chargerVacances() {
-  // Essayer depuis Firestore d'abord (cache admin)
+  // Charger les périodes de vacances saisies manuellement (Firestore)
   try {
     const snap = await getDocs(collection(db, 'cal_vacances'));
-    if (!snap.empty) {
-      calVacances = [];
-      snap.forEach(d => {
-        const v = d.data();
-        // Ignorer les entrées corrompues (sans dates valides)
-        if (v.debut && v.fin) calVacances.push({ debut: v.debut, fin: v.fin, label: v.label || 'Vacances' });
-      });
-      if (calVacances.length > 0) return;
-    }
-  } catch(e) {}
-
-  // Sinon, récupérer depuis l'API data.gouv.fr
-  if (isCoordinateur) {
-    await fetchVacancesMinistere();
-  } else {
-    // Promeneur : essayer l'API sans stocker
-    await fetchVacancesMinistere(false);
-  }
-}
-
-async function fetchVacancesMinistere(stocker = true) {
-  try {
-    const url = 'https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-calendrier-scolaire/records?where=zones%20like%20%22Zone%20C%22&limit=100&offset=0';
-    const resp = await fetch(url);
-    if (!resp.ok) throw new Error('HTTP ' + resp.status);
-    const data = await resp.json();
-    const periodes = [];
-    (data.results || []).forEach(r => {
-      if (!r.start_date || !r.end_date) return;
-      // Exclure "Rentrée scolaire"
-      if ((r.description || '').toLowerCase().includes('rentrée')) return;
-      const debut = r.start_date.slice(0, 10);
-      const finRaw = r.end_date.slice(0, 10);
-      // La date de fin du ministère est le 1er jour de reprise des cours
-      // → on enlève 1 jour pour avoir la vraie dernière journée de vacances
-      const finDate = new Date(finRaw);
-      finDate.setDate(finDate.getDate() - 1);
-      const fin = finDate.toISOString().slice(0, 10);
-
-      // Cas du dernier jour avant vacances : si le départ est "après les cours" (vendredi soir),
-      // le vendredi n'est PAS vacances → on avance d'un jour
-      const debutDate = new Date(debut);
-      // On vérifie si c'est le dernier jour ouvrable (lun-ven) AVANT le WE ou la période suivante
-      // Par convention : si départ un vendredi → lendemain samedi = 1er jour vacances
-      // Mais l'API indique la date de départ incluant la date "après les cours"
-      // → Si c'est un vendredi, le vendredi n'est PAS vacances, les vacances commencent samedi
-      // Si c'est un samedi, le samedi EST vacances
-      let debutEffectif = debut;
-      if (debutDate.getDay() === 5) { // Vendredi
-        debutDate.setDate(debutDate.getDate() + 1);
-        debutEffectif = debutDate.toISOString().slice(0, 10);
-      }
-
-      periodes.push({
-        debut: debutEffectif,
-        fin,
-        label: r.description || 'Vacances'
-      });
+    calVacances = [];
+    snap.forEach(d => {
+      const v = d.data();
+      // Ignorer les entrées corrompues (sans dates valides)
+      if (v.debut && v.fin) calVacances.push({ debut: v.debut, fin: v.fin, label: v.label || 'Vacances' });
     });
-
-    calVacances = periodes;
-
-    if (stocker && periodes.length > 0) {
-      // Sauvegarder dans Firestore pour les promeneurs aussi
-      try {
-        const batch = [];
-        // Supprimer anciens
-        const oldSnap = await getDocs(collection(db, 'cal_vacances'));
-        oldSnap.forEach(d => batch.push(deleteDoc(doc(db, 'cal_vacances', d.id))));
-        await Promise.all(batch);
-        // Insérer nouveaux
-        const saves = periodes.map((p, i) => setDoc(doc(db, 'cal_vacances', 'v' + i), p));
-        await Promise.all(saves);
-      } catch(e) { console.warn('Impossible de sauvegarder les vacances:', e); }
-    }
   } catch(e) {
-    console.warn('Vacances API error:', e);
-    // Ne pas bloquer le calendrier
+    console.warn('Impossible de charger les vacances:', e);
   }
 }
 
