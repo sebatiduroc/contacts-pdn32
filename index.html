@@ -873,6 +873,21 @@ th.mail-cb-th {
   border-radius: 10px;
   box-shadow: var(--ombre);
   overflow: hidden;
+  position: relative;
+}
+.cal-month-grid.mois-passe::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+  background: linear-gradient(
+    to bottom right,
+    transparent calc(50% - 4px),
+    rgba(192,57,43,0.5) calc(50% - 4px),
+    rgba(192,57,43,0.5) calc(50% + 4px),
+    transparent calc(50% + 4px)
+  );
 }
 .cal-month-header {
   display: grid;
@@ -923,6 +938,19 @@ th.mail-cb-th {
 .cal-day.has-events:hover { background: #eae6e0 !important; }
 .cal-day.admin-editable { cursor: pointer; }
 .cal-day.admin-editable:hover { background: #e8f0fb !important; }
+.cal-day.jour-passe::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    to bottom right,
+    transparent calc(50% - 1px),
+    rgba(192,57,43,0.4) calc(50% - 1px),
+    rgba(192,57,43,0.4) calc(50% + 1px),
+    transparent calc(50% + 1px)
+  );
+}
 .cal-event-chip {
   font-size: 0.7rem;
   font-weight: 600;
@@ -955,6 +983,21 @@ th.mail-cb-th {
   border-radius: 10px;
   box-shadow: var(--ombre);
   overflow: hidden;
+  position: relative;
+}
+.cal-mini-month.mois-passe::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+  background: linear-gradient(
+    to bottom right,
+    transparent calc(50% - 4px),
+    rgba(192,57,43,0.5) calc(50% - 4px),
+    rgba(192,57,43,0.5) calc(50% + 4px),
+    transparent calc(50% + 4px)
+  );
 }
 .cal-mini-month-title {
   background: var(--bleu);
@@ -1010,6 +1053,19 @@ th.mail-cb-th {
 .cal-mini-day.has-events:hover { opacity: 0.8; }
 .cal-mini-day.admin-editable { cursor: pointer; }
 .cal-mini-day.admin-editable:hover { opacity: 0.8; }
+.cal-mini-day.jour-passe::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    to bottom right,
+    transparent calc(50% - 0.5px),
+    rgba(192,57,43,0.4) calc(50% - 0.5px),
+    rgba(192,57,43,0.4) calc(50% + 0.5px),
+    transparent calc(50% + 0.5px)
+  );
+}
 .cal-mini-bands {
   display: flex;
   flex-direction: row;
@@ -3524,6 +3580,10 @@ function renderCalendrier() {
 function renderMonthGrid(year, month, todayStr) {
   const wrap = document.createElement('div');
   wrap.className = 'cal-month-grid';
+  const [tY, tM] = todayStr.split('-').map(Number);
+  if (year < tY || (year === tY && (month + 1) < tM)) {
+    wrap.classList.add('mois-passe');
+  }
 
   // Header jours
   const header = document.createElement('div');
@@ -3585,6 +3645,9 @@ function makeDayCell(dayNum, ds, otherMonth, todayStr) {
   const vacLabel = !otherMonth ? getVacancesLabel(ds) : null;
   if (vacLabel) cell.classList.add('vacances');
   if (ds === todayStr) cell.classList.add('today');
+  if (!otherMonth && ds.slice(0, 7) === todayStr.slice(0, 7) && ds < todayStr) {
+    cell.classList.add('jour-passe');
+  }
 
   const numEl = document.createElement('div');
   numEl.className = 'cal-day-num';
@@ -3647,6 +3710,10 @@ function makeDayCell(dayNum, ds, otherMonth, todayStr) {
 function renderMiniMonth(year, month, todayStr) {
   const wrap = document.createElement('div');
   wrap.className = 'cal-mini-month';
+  const [tY, tM] = todayStr.split('-').map(Number);
+  if (year < tY || (year === tY && (month + 1) < tM)) {
+    wrap.classList.add('mois-passe');
+  }
 
   const title = document.createElement('div');
   title.className = 'cal-mini-month-title';
@@ -3689,6 +3756,9 @@ function renderMiniMonth(year, month, todayStr) {
     if (dow === 0 || dow === 6) cell.classList.add('weekend');
     if (vacLabel) cell.classList.add('vacances');
     if (ds === todayStr) cell.classList.add('today');
+    if (ds.slice(0, 7) === todayStr.slice(0, 7) && ds < todayStr) {
+      cell.classList.add('jour-passe');
+    }
 
     const numEl = document.createElement('div');
     numEl.className = 'day-num-mini';
