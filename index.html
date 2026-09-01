@@ -3381,6 +3381,20 @@ async function initCalendrier() {
     await chargerVacances();
   }
   renderCalendrier();
+  scrollVersMoisCourant();
+}
+
+function scrollVersMoisCourant() {
+  // Place le mois en cours le plus haut possible à l'écran à l'ouverture de l'onglet
+  requestAnimationFrame(() => {
+    const el = document.getElementById('cal-mois-courant');
+    if (!el) return;
+    const headerEl = document.querySelector('header');
+    const headerHeight = headerEl ? headerEl.offsetHeight : 0;
+    const rect = el.getBoundingClientRect();
+    const scrollTop = window.pageYOffset + rect.top - headerHeight - 12;
+    window.scrollTo({ top: Math.max(scrollTop, 0), behavior: 'smooth' });
+  });
 }
 
 async function chargerEvenements() {
@@ -3494,13 +3508,21 @@ function renderCalendrier() {
   if (calMode === 'mois') {
     title.textContent = `${MOIS_FR[calMonth]} ${calYear}`;
     content.innerHTML = '';
-    content.appendChild(renderMonthGrid(calYear, calMonth, todayStr));
+    const moisGrid = renderMonthGrid(calYear, calMonth, todayStr);
+    if (calYear === today.getFullYear() && calMonth === today.getMonth()) {
+      moisGrid.id = 'cal-mois-courant';
+    }
+    content.appendChild(moisGrid);
   } else {
     title.textContent = `${calYear}`;
     const grid = document.createElement('div');
     grid.className = 'cal-year-grid';
     for (let m = 0; m < 12; m++) {
-      grid.appendChild(renderMiniMonth(calYear, m, todayStr));
+      const mini = renderMiniMonth(calYear, m, todayStr);
+      if (calYear === today.getFullYear() && m === today.getMonth()) {
+        mini.id = 'cal-mois-courant';
+      }
+      grid.appendChild(mini);
     }
     content.innerHTML = '';
     content.appendChild(grid);
