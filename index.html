@@ -1007,7 +1007,20 @@ th.mail-cb-th {
   font-family: 'Libre Baskerville', serif;
   font-size: 0.85rem;
   font-weight: 700;
+  position: relative;
 }
+.cal-mini-annee-suivante {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: pointer;
+  font-size: 0.75rem;
+  color: var(--blanc);
+  opacity: 0.85;
+  transition: opacity 0.2s;
+}
+.cal-mini-annee-suivante:hover { opacity: 1; }
 .cal-mini-header {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
@@ -3671,6 +3684,18 @@ function renderMiniMonth(year, month, todayStr) {
   title.className = 'cal-mini-month-title';
   title.textContent = MOIS_FR[month];
   wrap.appendChild(title);
+
+  if (month === 11) {
+    const arrowNext = document.createElement('span');
+    arrowNext.className = 'cal-mini-annee-suivante';
+    arrowNext.textContent = '▶';
+    arrowNext.addEventListener('click', (e) => {
+      e.stopPropagation();
+      calYear++;
+      renderCalendrier();
+    });
+    title.appendChild(arrowNext);
+  }
 
   const header = document.createElement('div');
   header.className = 'cal-mini-header';
