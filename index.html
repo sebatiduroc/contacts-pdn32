@@ -758,9 +758,69 @@ td a:hover { text-decoration: underline; }
   padding: 40px;
   font-size: 0.95rem;
 }
+.lien-thumb-link {
+  display: block;
+  border-radius: 8px;
+  overflow: hidden;
+  line-height: 0;
+}
+.lien-thumb {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  background: var(--gris);
+  transition: opacity 0.15s;
+}
+.lien-thumb-link:hover .lien-thumb { opacity: 0.88; }
 
 /* Modal Lien */
 #modal-lien .modal { max-width: 500px; }
+.lien-apercu-preview-wrap { margin-top: 10px; }
+.lien-apercu-preview-wrap img {
+  width: 100%;
+  max-width: 280px;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: 8px;
+  box-shadow: var(--ombre);
+  display: block;
+}
+.lien-apercu-preview-actions { margin-top: 8px; display: flex; gap: 8px; }
+
+/* Modal recadrage lien */
+#modal-crop-lien .modal { max-width: 480px; }
+.crop-stage {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  border-radius: 8px;
+  background: #111;
+  touch-action: none;
+  cursor: grab;
+  user-select: none;
+}
+.crop-stage.dragging { cursor: grabbing; }
+.crop-stage img {
+  position: absolute;
+  top: 0; left: 0;
+  max-width: none;
+  pointer-events: none;
+  transform-origin: 0 0;
+}
+.crop-zoom-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+}
+.crop-zoom-row input[type="range"] { flex: 1; }
+.crop-hint {
+  font-size: 0.8rem;
+  color: var(--gris-texte);
+  margin-top: 8px;
+}
 
 /* ===== MODE MAIL ===== */
 .btn-mail { background: var(--bleu-clair); color: var(--blanc); }
@@ -1627,11 +1687,47 @@ th.mail-cb-th {
         <label>Catégorie</label>
         <input type="text" id="lien-categorie" placeholder="ex: Formation, Ressources…">
       </div>
+      <div class="form-group">
+        <label>Aperçu (image)</label>
+        <input type="file" id="lien-apercu-file" accept="image/*" onchange="onLienApercuFileChange(event)">
+        <input type="hidden" id="lien-apercu-data">
+        <div class="lien-apercu-preview-wrap" id="lien-apercu-preview-wrap" style="display:none">
+          <img id="lien-apercu-preview" alt="Aperçu du lien">
+          <div class="lien-apercu-preview-actions">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="rouvrirRecadrage()">✂️ Recadrer à nouveau</button>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="supprimerApercu()">🗑️ Retirer l'image</button>
+          </div>
+        </div>
+      </div>
       <div id="err-lien" class="msg-error"></div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModal('modal-lien')">Annuler</button>
       <button class="btn btn-primary" onclick="sauvegarderLien()">💾 Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL RECADRAGE APERÇU LIEN ===== -->
+<div class="modal-overlay" id="modal-crop-lien">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Recadrer l'aperçu</h3>
+      <button class="modal-close" onclick="annulerRecadrage()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="crop-stage" id="crop-stage">
+        <img id="crop-img" draggable="false" alt="">
+      </div>
+      <div class="crop-zoom-row">
+        <span>🔍</span>
+        <input type="range" id="crop-zoom" min="1" max="3" step="0.01" value="1" oninput="onCropZoomChange()">
+      </div>
+      <p class="crop-hint">Glissez l'image pour la repositionner, ajustez le zoom si besoin. Le cadre respecte un format paysage 4/3.</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="annulerRecadrage()">Annuler</button>
+      <button class="btn btn-primary" onclick="validerRecadrage()">✅ Valider le recadrage</button>
     </div>
   </div>
 </div>
@@ -3244,13 +3340,20 @@ async function renderLiens() {
     card.className = 'lien-card';
     card.dataset.id = l.id;
 
+    const admin = isAdmin();
     const catDisplay = l.categorie
       ? `<span class="lien-categorie">${l.categorie}</span>` : '';
     const descDisplay = l.description
       ? `<div class="lien-desc">${l.description}</div>` : '';
-    const urlDisplay = l.url
+    // Miniature cliquable : affichée si un aperçu a été défini. Les non-admins
+    // ne voient jamais l'URL en clair, uniquement la miniature (ou rien si pas d'aperçu).
+    const thumbDisplay = l.apercu
+      ? `<a class="lien-thumb-link" href="${l.url}" target="_blank" rel="noopener">
+           <img class="lien-thumb" src="${l.apercu}" alt="${l.titre || ''}">
+         </a>` : '';
+    const urlDisplay = (l.url && (admin || !l.apercu))
       ? `<div class="lien-url"><a href="${l.url}" target="_blank" rel="noopener">🔗 ${l.url}</a></div>` : '';
-    const adminBtns = isAdmin() ? `
+    const adminBtns = admin ? `
       <div class="lien-actions">
         <button class="btn btn-secondary btn-sm" onclick="ouvrirModalLien('${l.id}')">✏️ Modifier</button>
         <button class="btn btn-danger btn-sm" onclick="supprimerLien('${l.id}')">🗑️</button>
@@ -3260,6 +3363,7 @@ async function renderLiens() {
       ${catDisplay}
       <div class="lien-titre">${l.titre || '—'}</div>
       ${descDisplay}
+      ${thumbDisplay}
       ${urlDisplay}
       ${adminBtns}
     `;
@@ -3311,6 +3415,8 @@ async function sauvegarderOrdre() {
 
 window.ouvrirModalLien = function(id = null) {
   document.getElementById('err-lien').style.display = 'none';
+  document.getElementById('lien-apercu-file').value = '';
+  lienApercuOriginal = null;
   if (id) {
     const l = allLiens.find(x => x.id === id);
     if (!l) return;
@@ -3320,6 +3426,13 @@ window.ouvrirModalLien = function(id = null) {
     document.getElementById('lien-url').value = l.url || '';
     document.getElementById('lien-desc').value = l.description || '';
     document.getElementById('lien-categorie').value = l.categorie || '';
+    document.getElementById('lien-apercu-data').value = l.apercu || '';
+    if (l.apercu) {
+      document.getElementById('lien-apercu-preview').src = l.apercu;
+      document.getElementById('lien-apercu-preview-wrap').style.display = 'block';
+    } else {
+      document.getElementById('lien-apercu-preview-wrap').style.display = 'none';
+    }
   } else {
     document.getElementById('modal-lien-title').textContent = 'Ajouter un lien';
     document.getElementById('lien-edit-id').value = '';
@@ -3327,22 +3440,165 @@ window.ouvrirModalLien = function(id = null) {
     document.getElementById('lien-url').value = '';
     document.getElementById('lien-desc').value = '';
     document.getElementById('lien-categorie').value = '';
+    document.getElementById('lien-apercu-data').value = '';
+    document.getElementById('lien-apercu-preview-wrap').style.display = 'none';
   }
   document.getElementById('modal-lien').classList.add('open');
 };
+
+// ===== APERÇU LIEN : sélection, recadrage 4/3, compression =====
+let lienApercuOriginal = null; // dataURL source non compressée, pour permettre un nouveau recadrage
+let cropState = null;
+let cropDragging = false;
+let cropLastX = 0, cropLastY = 0;
+
+window.onLienApercuFileChange = function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  if (!file.type.startsWith('image/')) {
+    alert('Merci de choisir un fichier image.');
+    e.target.value = '';
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    lienApercuOriginal = ev.target.result;
+    ouvrirRecadrage(lienApercuOriginal);
+  };
+  reader.readAsDataURL(file);
+};
+
+window.rouvrirRecadrage = function() {
+  const src = lienApercuOriginal || document.getElementById('lien-apercu-data').value;
+  if (!src) return;
+  ouvrirRecadrage(src);
+};
+
+function ouvrirRecadrage(srcDataUrl) {
+  document.getElementById('modal-lien').classList.remove('open');
+  document.getElementById('modal-crop-lien').classList.add('open');
+  const img = document.getElementById('crop-img');
+  img.onload = () => {
+    const stage = document.getElementById('crop-stage');
+    const stageW = stage.clientWidth, stageH = stage.clientHeight;
+    const nw = img.naturalWidth, nh = img.naturalHeight;
+    const baseScale = Math.max(stageW / nw, stageH / nh); // "cover"
+    cropState = {
+      nw, nh, stageW, stageH, baseScale,
+      zoom: 1,
+      tx: (stageW - nw * baseScale) / 2,
+      ty: (stageH - nh * baseScale) / 2
+    };
+    document.getElementById('crop-zoom').value = 1;
+    applyCropTransform();
+  };
+  img.src = srcDataUrl;
+}
+
+function applyCropTransform() {
+  const img = document.getElementById('crop-img');
+  const s = cropState;
+  if (!s) return;
+  const totalScale = s.baseScale * s.zoom;
+  const w = s.nw * totalScale, h = s.nh * totalScale;
+  // L'image doit toujours couvrir tout le cadre (pas de bande vide)
+  s.tx = Math.min(0, Math.max(s.stageW - w, s.tx));
+  s.ty = Math.min(0, Math.max(s.stageH - h, s.ty));
+  img.style.width = w + 'px';
+  img.style.height = h + 'px';
+  img.style.transform = `translate(${s.tx}px, ${s.ty}px)`;
+}
+
+window.onCropZoomChange = function() {
+  if (!cropState) return;
+  cropState.zoom = parseFloat(document.getElementById('crop-zoom').value);
+  applyCropTransform();
+};
+
+window.annulerRecadrage = function() {
+  cropState = null;
+  document.getElementById('modal-crop-lien').classList.remove('open');
+  document.getElementById('modal-lien').classList.add('open');
+};
+
+window.validerRecadrage = function() {
+  if (!cropState) return;
+  const img = document.getElementById('crop-img');
+  const s = cropState;
+  const totalScale = s.baseScale * s.zoom;
+  const sx = -s.tx / totalScale;
+  const sy = -s.ty / totalScale;
+  const sw = s.stageW / totalScale;
+  const sh = s.stageH / totalScale;
+
+  // Miniature 4/3, largeur max ~450px comme demandé
+  const outW = 450, outH = 338;
+  const canvas = document.createElement('canvas');
+  canvas.width = outW; canvas.height = outH;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(img, sx, sy, sw, sh, 0, 0, outW, outH);
+
+  let quality = 0.82;
+  let dataUrl = canvas.toDataURL('image/jpeg', quality);
+  // Réduit la qualité si le résultat reste trop lourd
+  while (dataUrl.length > 220000 && quality > 0.35) {
+    quality -= 0.1;
+    dataUrl = canvas.toDataURL('image/jpeg', quality);
+  }
+
+  document.getElementById('lien-apercu-data').value = dataUrl;
+  document.getElementById('lien-apercu-preview').src = dataUrl;
+  document.getElementById('lien-apercu-preview-wrap').style.display = 'block';
+
+  cropState = null;
+  document.getElementById('modal-crop-lien').classList.remove('open');
+  document.getElementById('modal-lien').classList.add('open');
+};
+
+window.supprimerApercu = function() {
+  document.getElementById('lien-apercu-data').value = '';
+  document.getElementById('lien-apercu-preview').src = '';
+  document.getElementById('lien-apercu-preview-wrap').style.display = 'none';
+  document.getElementById('lien-apercu-file').value = '';
+  lienApercuOriginal = null;
+};
+
+(function initCropDrag() {
+  const stage = document.getElementById('crop-stage');
+  if (!stage) return;
+  stage.addEventListener('pointerdown', e => {
+    if (!cropState) return;
+    cropDragging = true;
+    stage.classList.add('dragging');
+    cropLastX = e.clientX; cropLastY = e.clientY;
+    stage.setPointerCapture(e.pointerId);
+  });
+  stage.addEventListener('pointermove', e => {
+    if (!cropDragging || !cropState) return;
+    const dx = e.clientX - cropLastX, dy = e.clientY - cropLastY;
+    cropLastX = e.clientX; cropLastY = e.clientY;
+    cropState.tx += dx; cropState.ty += dy;
+    applyCropTransform();
+  });
+  const stopDrag = () => { cropDragging = false; stage.classList.remove('dragging'); };
+  stage.addEventListener('pointerup', stopDrag);
+  stage.addEventListener('pointercancel', stopDrag);
+  stage.addEventListener('pointerleave', stopDrag);
+})();
 
 window.sauvegarderLien = async function() {
   const titre = document.getElementById('lien-titre').value.trim();
   const url = document.getElementById('lien-url').value.trim();
   const description = document.getElementById('lien-desc').value.trim();
   const categorie = document.getElementById('lien-categorie').value.trim();
+  const apercu = document.getElementById('lien-apercu-data').value || '';
   const errEl = document.getElementById('err-lien');
 
   if (!titre) { errEl.textContent = 'Le titre est obligatoire.'; errEl.style.display = 'block'; return; }
   if (!url) { errEl.textContent = "L'URL est obligatoire."; errEl.style.display = 'block'; return; }
 
   const editId = document.getElementById('lien-edit-id').value;
-  const data = { titre, url, description, categorie, dateMaj: serverTimestamp() };
+  const data = { titre, url, description, categorie, apercu, dateMaj: serverTimestamp() };
 
   try {
     if (editId) {
