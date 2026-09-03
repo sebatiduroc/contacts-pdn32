@@ -3645,6 +3645,11 @@ const CAL_STABILO_IMAGES = {
   "12": "img/stabilo/12.png",
 };
 
+function getStabiloImage(year, month1to12) {
+  const idx = ((month1to12 * 7 + year) % 12) + 1;
+  return CAL_STABILO_IMAGES[String(idx)];
+}
+
 let calMode = 'annee'; // 'mois' | 'annee'
 let calYear = new Date().getFullYear();
 let calMonth = new Date().getMonth(); // 0-indexed
