@@ -4232,7 +4232,8 @@ window.selectCalColor = function(color) {
   document.querySelectorAll('.color-swatch').forEach(s => {
     s.classList.toggle('selected', s.dataset.color === color);
   });
-  document.getElementById('cal-color-label').textContent = CAL_COLORS[color] || '';
+  const swatch = document.querySelector(`.color-swatch[data-color="${color}"]`);
+  document.getElementById('cal-color-label').textContent = swatch ? swatch.dataset.label : '';
 };
 
 window.sauvegarderEvenement = async function() {
