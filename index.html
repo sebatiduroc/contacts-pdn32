@@ -530,15 +530,18 @@ td a:hover { text-decoration: underline; }
   flex: 0 0 auto;
   padding: 3px 9px;
   border-radius: 6px;
-  font-size: 0.72rem;
+  font-size: 0.74rem;
   font-weight: 600;
   white-space: nowrap;
   color: var(--bleu);
+  font-family: 'Courier New', Consolas, monospace;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
 }
-.stats-date-vert { background: #c8f0d3; }
+.stats-date-vert { background: var(--vert); color: #fff; }
 .stats-date-jaune { background: #fbf0a8; }
 .stats-date-orange { background: #fbd9a0; }
-.stats-date-rouge { background: #f5c1ba; color: #7a2015; }
+.stats-date-rouge { background: var(--rouge); color: #fff; }
 .stats-date-jamais { background: #e5e2dc; color: var(--gris-texte); }
 .stats-bar-wrap {
   flex: 1;
