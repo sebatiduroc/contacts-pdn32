@@ -274,6 +274,24 @@ thead th {
 }
 thead th:first-child { border-radius: 10px 0 0 0; }
 thead th:last-child { border-radius: 0 10px 0 0; }
+
+/* Sur grand écran (ordi), on limite la hauteur du tableau : l'ascenseur
+   horizontal reste ainsi juste sous les dernières lignes visibles, à
+   portée sans avoir à descendre tout en bas de la page. L'en-tête reste
+   figé pendant le défilement vertical, comme dans un tableur.
+   Sur mobile/tablette on ne touche à rien : le défilement de toute la
+   page fonctionne déjà bien. */
+@media (min-width: 901px) {
+  .table-wrap {
+    overflow: auto;
+    max-height: calc(100vh - 260px);
+  }
+  thead th {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+  }
+}
 tbody tr {
   border-bottom: 1px solid var(--gris);
   transition: background 0.15s;
