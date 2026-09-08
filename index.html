@@ -1443,6 +1443,9 @@ th.mail-cb-th {
         <input type="password" id="login-pwd" placeholder="••••••••">
       </div>
       <button class="btn btn-primary btn-full" onclick="doLogin()">Se connecter</button>
+      <div style="text-align:center;margin-top:10px">
+        <a href="#" style="font-size:0.82rem;color:var(--bleu)" onclick="ouvrirMdpOublie();return false">Mot de passe oublié ?</a>
+      </div>
       <div style="text-align:center;margin-top:16px">
         <span style="font-size:0.82rem;color:var(--gris-texte)">ou</span>
       </div>
@@ -1967,10 +1970,33 @@ th.mail-cb-th {
   </div>
 </div>
 
+<!-- ===== MODAL MOT DE PASSE OUBLIÉ ===== -->
+<div class="modal-overlay" id="modal-mdp-oublie">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-header">
+      <h3>🔑 Mot de passe oublié</h3>
+      <button class="modal-close" onclick="closeModal('modal-mdp-oublie')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="err-mdp-oublie" class="msg-error"></div>
+      <div id="ok-mdp-oublie" class="msg-success"></div>
+      <p style="font-size:0.85rem;color:var(--gris-texte);margin-bottom:14px">
+        Indiquez l'adresse email de votre compte. Si elle correspond à un compte existant,
+        vous recevrez un lien pour choisir un nouveau mot de passe.
+      </p>
+      <div class="form-group">
+        <label>Adresse email</label>
+        <input type="email" id="mdp-oublie-email" placeholder="votre@email.fr">
+      </div>
+      <button class="btn btn-primary btn-full" onclick="envoyerResetMdp()">Envoyer le lien de réinitialisation</button>
+    </div>
+  </div>
+</div>
+
 <!-- Firebase -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged }
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { getFirestore, collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, addDoc, query, orderBy, serverTimestamp, Timestamp, onSnapshot, arrayUnion, increment }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
@@ -2233,6 +2259,34 @@ window.ouvrirStatistiques = async function() {
 };
 
 // ===== AUTH =====
+window.ouvrirMdpOublie = function() {
+  hideErr('err-mdp-oublie');
+  document.getElementById('ok-mdp-oublie').style.display = 'none';
+  document.getElementById('mdp-oublie-email').value = document.getElementById('login-email').value.trim();
+  document.getElementById('modal-mdp-oublie').classList.add('open');
+};
+
+window.envoyerResetMdp = async function() {
+  hideErr('err-mdp-oublie');
+  document.getElementById('ok-mdp-oublie').style.display = 'none';
+  const email = document.getElementById('mdp-oublie-email').value.trim();
+  if (!email) { showErr('err-mdp-oublie', 'Veuillez indiquer une adresse email.'); return; }
+  loader(true);
+  try {
+    await sendPasswordResetEmail(auth, email);
+  } catch(e) {
+    // On ne distingue pas "compte inexistant" pour ne pas révéler quels emails
+    // sont enregistrés : seules les erreurs de format sont signalées.
+    if (e.code !== 'auth/user-not-found') {
+      loader(false);
+      showErr('err-mdp-oublie', 'Adresse email invalide.');
+      return;
+    }
+  }
+  loader(false);
+  showOk('ok-mdp-oublie', 'Si cette adresse est associée à un compte, un email de réinitialisation vient d\'être envoyé.');
+};
+
 window.switchLoginTab = function(tab) {
   document.getElementById('form-connexion').style.display = tab === 'connexion' ? 'block' : 'none';
   document.getElementById('form-inscription').style.display = tab === 'inscription' ? 'block' : 'none';
