@@ -490,6 +490,92 @@ td a:hover { text-decoration: underline; }
   letter-spacing: 0.1em;
 }
 .invitation-used { opacity: 0.5; text-decoration: line-through; }
+
+/* ===== STATISTIQUES ===== */
+.stats-total-box {
+  background: var(--fond);
+  border-radius: 10px;
+  padding: 18px 20px;
+  text-align: center;
+  margin-bottom: 22px;
+}
+.stats-total-box .chiffre {
+  font-family: 'Libre Baskerville', serif;
+  font-size: 2.2rem;
+  font-weight: 700;
+  color: var(--bleu);
+  line-height: 1.1;
+}
+.stats-total-box .libelle {
+  font-size: 0.82rem;
+  color: var(--gris-texte);
+  margin-top: 4px;
+}
+.stats-promeneurs-list { display: flex; flex-direction: column; gap: 9px; }
+.stats-promeneur-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.stats-promeneur-nom {
+  flex: 0 0 170px;
+  max-width: 170px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.stats-date-badge {
+  flex: 0 0 auto;
+  padding: 3px 9px;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--bleu);
+}
+.stats-date-vert { background: #c8f0d3; }
+.stats-date-jaune { background: #fbf0a8; }
+.stats-date-orange { background: #fbd9a0; }
+.stats-date-rouge { background: #f5c1ba; color: #7a2015; }
+.stats-date-jamais { background: #e5e2dc; color: var(--gris-texte); }
+.stats-bar-wrap {
+  flex: 1;
+  min-width: 60px;
+  background: var(--gris);
+  border-radius: 6px;
+  height: 16px;
+  overflow: hidden;
+}
+.stats-bar {
+  height: 100%;
+  background: var(--bleu-clair);
+  border-radius: 6px;
+}
+.stats-bar-count {
+  flex: 0 0 42px;
+  text-align: right;
+  font-size: 0.76rem;
+  color: var(--gris-texte);
+}
+.stats-legende {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--gris);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 18px;
+  font-size: 0.78rem;
+  color: var(--gris-texte);
+}
+.stats-legende .dot {
+  display: inline-block;
+  width: 11px; height: 11px;
+  border-radius: 3px;
+  margin-right: 5px;
+  vertical-align: middle;
+}
 .users-admin-list { display: flex; flex-direction: column; gap: 8px; }
 .user-admin-item {
   display: flex; align-items: center; gap: 12px;
@@ -1518,6 +1604,11 @@ th.mail-cb-th {
 
 <!-- ADMIN -->
 <div id="screen-admin" class="screen">
+  <!-- Statistiques -->
+  <div class="admin-section" style="text-align:center">
+    <button class="btn btn-primary" onclick="ouvrirStatistiques()">📊 Visualiser les statistiques</button>
+  </div>
+
   <!-- Invitations -->
   <div class="admin-section">
     <h3>🎟️ Générer un code d'invitation</h3>
@@ -1845,12 +1936,37 @@ th.mail-cb-th {
   </div>
 </div>
 
+<!-- ===== MODAL STATISTIQUES (admin) ===== -->
+<div class="modal-overlay" id="modal-stats">
+  <div class="modal" style="max-width:720px">
+    <div class="modal-header">
+      <h3>📊 Statistiques de l'application</h3>
+      <button class="modal-close" onclick="closeModal('modal-stats')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="stats-total-box">
+        <div class="chiffre" id="stats-total-visites">—</div>
+        <div class="libelle">visites au total (connectés et invités, hors admin)</div>
+      </div>
+      <h4 style="margin-bottom:10px;font-size:0.95rem;color:var(--gris-texte)">Connexions par promeneur</h4>
+      <div class="stats-promeneurs-list" id="stats-promeneurs-list"></div>
+      <div class="stats-legende">
+        <span><span class="dot stats-date-vert"></span>Moins d'une semaine</span>
+        <span><span class="dot stats-date-jaune"></span>1 semaine à 1 mois</span>
+        <span><span class="dot stats-date-orange"></span>1 à 2 mois</span>
+        <span><span class="dot stats-date-rouge"></span>Plus de 2 mois</span>
+        <span><span class="dot stats-date-jamais"></span>Jamais connecté(e)</span>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Firebase -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { getFirestore, collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, addDoc, query, orderBy, serverTimestamp, Timestamp, onSnapshot }
+import { getFirestore, collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, addDoc, query, orderBy, serverTimestamp, Timestamp, onSnapshot, arrayUnion, increment }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 // ===== CONFIG FIREBASE =====
@@ -2038,6 +2154,72 @@ function badgePublic(pub) {
   return `<span class="badge ${map[pub] || ''}">${pub || '—'}</span>`;
 }
 
+// ===== STATISTIQUES =====
+// Date du jour au format AAAA-MM-JJ (heure locale), utilisée comme identifiant
+// de journée pour ne compter qu'une seule connexion par jour et par promeneur.
+function dateStrLocale(d = new Date()) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const j = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${j}`;
+}
+
+// Incrémente le compteur global de visites (fire-and-forget, ne bloque jamais l'UI)
+function enregistrerVisite() {
+  setDoc(doc(db, 'stats', 'global'), { visites: increment(1) }, { merge: true })
+    .catch(e => console.error('Erreur compteur visites:', e));
+}
+
+// Détermine la couleur/le texte du badge "dernière connexion" selon l'ancienneté
+function statutDerniereConnexion(ts) {
+  if (!ts) return { classe: 'stats-date-jamais', texte: 'Jamais' };
+  const d = ts.toDate ? ts.toDate() : new Date(ts);
+  const jours = Math.floor((Date.now() - d.getTime()) / 86400000);
+  let classe;
+  if (jours > 60) classe = 'stats-date-rouge';       // plus de 2 mois
+  else if (jours > 30) classe = 'stats-date-orange'; // entre 1 et 2 mois
+  else if (jours > 7) classe = 'stats-date-jaune';   // entre 1 semaine et 1 mois
+  else classe = 'stats-date-vert';                   // moins d'une semaine
+  const texte = d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  return { classe, texte };
+}
+
+window.ouvrirStatistiques = async function() {
+  loader(true);
+  try {
+    const statsSnap = await getDoc(doc(db, 'stats', 'global'));
+    const totalVisites = statsSnap.exists() ? (statsSnap.data().visites || 0) : 0;
+    document.getElementById('stats-total-visites').textContent = totalVisites;
+
+    // Rechargement à jour des promeneurs (connexions / derniereConnexion peuvent
+    // avoir changé depuis le dernier chargement de allPromeneurs)
+    const snap = await getDocs(query(collection(db, 'promeneurs'), orderBy('nom')));
+    const liste = [];
+    snap.forEach(d => liste.push({ id: d.id, ...d.data() }));
+
+    const maxJours = Math.max(1, ...liste.map(p => (p.connexions || []).length));
+    const cont = document.getElementById('stats-promeneurs-list');
+    cont.innerHTML = liste.map(p => {
+      const nbJours = (p.connexions || []).length;
+      const largeur = Math.round((nbJours / maxJours) * 100);
+      const { classe, texte } = statutDerniereConnexion(p.derniereConnexion);
+      return `
+        <div class="stats-promeneur-row">
+          <span class="stats-promeneur-nom" title="${p.nom || '—'}">${p.nom || '—'}</span>
+          <span class="stats-date-badge ${classe}">${texte}</span>
+          <div class="stats-bar-wrap"><div class="stats-bar" style="width:${largeur}%"></div></div>
+          <span class="stats-bar-count">${nbJours} j.</span>
+        </div>`;
+    }).join('') || '<p style="color:var(--gris-texte);font-size:0.88rem">Aucun promeneur.</p>';
+
+    document.getElementById('modal-stats').classList.add('open');
+  } catch(e) {
+    console.error('Erreur chargement statistiques:', e);
+    toast('❌ Erreur lors du chargement des statistiques');
+  }
+  loader(false);
+};
+
 // ===== AUTH =====
 window.switchLoginTab = function(tab) {
   document.getElementById('form-connexion').style.display = tab === 'connexion' ? 'block' : 'none';
@@ -2128,6 +2310,8 @@ window.accederEnInvite = async function() {
   } catch(e) {
     console.error('Erreur chargement invité:', e);
   }
+  // Statistiques : un invité n'est jamais admin, sa visite compte toujours
+  enregistrerVisite();
   // Afficher l'app avant de rendre les composants
   document.getElementById('screen-login').style.display = 'none';
   document.getElementById('screen-app').style.display = 'block';
@@ -2161,6 +2345,16 @@ async function onConnexionReussie(user) {
   snap.forEach(d => allPromeneurs.push({ id: d.id, ...d.data() }));
   currentUserData = allPromeneurs.find(p => p.uid === user.uid) || null;
   isCoordinateur = currentUserData?.public === 'Coordinateur';
+
+  // Statistiques : jour de connexion + date de dernière connexion (admin compris),
+  // mais la visite ne compte dans le total que si ce n'est pas un admin
+  if (currentUserData) {
+    updateDoc(doc(db, 'promeneurs', currentUserData.id), {
+      connexions: arrayUnion(dateStrLocale()),
+      derniereConnexion: serverTimestamp()
+    }).catch(e => console.error('Erreur suivi connexion:', e));
+  }
+  if (!isCoordinateur) enregistrerVisite();
 
   // Synchroniser roles/{uid} au cas où il manquerait
   if (isCoordinateur) {
