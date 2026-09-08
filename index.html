@@ -2198,10 +2198,13 @@ window.ouvrirStatistiques = async function() {
     document.getElementById('stats-total-visites').textContent = totalVisites;
 
     // Rechargement à jour des promeneurs (connexions / derniereConnexion peuvent
-    // avoir changé depuis le dernier chargement de allPromeneurs)
+    // avoir changé depuis le dernier chargement de allPromeneurs), en excluant les admins
     const snap = await getDocs(query(collection(db, 'promeneurs'), orderBy('nom')));
     const liste = [];
-    snap.forEach(d => liste.push({ id: d.id, ...d.data() }));
+    snap.forEach(d => {
+      const p = { id: d.id, ...d.data() };
+      if (p.public !== 'Coordinateur') liste.push(p);
+    });
 
     const maxJours = Math.max(1, ...liste.map(p => (p.connexions || []).length));
     const cont = document.getElementById('stats-promeneurs-list');
