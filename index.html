@@ -1944,6 +1944,9 @@ th.mail-cb-th {
       <button class="modal-close" onclick="closeModal('modal-stats')">✕</button>
     </div>
     <div class="modal-body">
+      <p style="font-size:0.78rem;color:var(--gris-texte);margin-bottom:14px;font-style:italic">
+        Statistiques disponibles à partir du 08/09/2026.
+      </p>
       <div class="stats-total-box">
         <div class="chiffre" id="stats-total-visites">—</div>
         <div class="libelle">visites au total (connectés et invités, hors admin)</div>
@@ -2202,7 +2205,10 @@ window.ouvrirStatistiques = async function() {
     cont.innerHTML = liste.map(p => {
       const nbJours = (p.connexions || []).length;
       const largeur = Math.round((nbJours / maxJours) * 100);
-      const { classe, texte } = statutDerniereConnexion(p.derniereConnexion);
+      // dateVerif est déjà horodaté à chaque connexion depuis longtemps (colonne
+      // "Dernière vérif."). On l'utilise en repli tant que derniereConnexion
+      // n'a pas encore été renseigné par une reconnexion postérieure à cette mise à jour.
+      const { classe, texte } = statutDerniereConnexion(p.derniereConnexion || p.dateVerif);
       return `
         <div class="stats-promeneur-row">
           <span class="stats-promeneur-nom" title="${p.nom || '—'}">${p.nom || '—'}</span>
