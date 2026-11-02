@@ -3507,14 +3507,15 @@ function pdnEsc(s) {
   return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
-// Clé de comparaison : sans accents, sans casse, sans ponctuation, mots triés.
+// Clé de comparaison : sans accents, sans casse, sans ponctuation, mots dédoublonnés et triés.
 // "DUPONT Jean", "Jean Dupont" et "Dupont-Jean" donnent la même clé.
 function pdnCle(s) {
-  return String(s || '')
+  const mots = String(s || '')
     .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
     .toLowerCase().replace(/œ/g, 'oe').replace(/æ/g, 'ae')
     .replace(/[^a-z0-9]+/g, ' ').trim()
-    .split(' ').filter(Boolean).sort().join(' ');
+    .split(' ').filter(Boolean);
+  return [...new Set(mots)].sort().join(' ');
 }
 
 function pdnDistance(a, b) {
@@ -3555,8 +3556,11 @@ async function pdnRecupererPageSite() {
 }
 
 // Extrait les noms "Prénom Nom" depuis le HTML de la page, ou depuis un texte copié-collé.
-// Repère chaque fiche par sa ligne "32300 | Commune" : les deux textes qui la précèdent
-// sont le prénom et le nom.
+// Chaque fiche est repérée par sa ligne "32300 | Commune". Le nom est juste avant :
+// - texte collé : une ligne "Prénom Nom" (précédée parfois d'une ligne de texte alternatif
+//   d'image, ignorée). Si la ligne ne contient qu'un mot, on la complète par la ligne
+//   précédente (cas où prénom et nom sont sur deux lignes).
+// - HTML : les textes de la fiche situés avant la ligne du code postal.
 function pdnExtraireNomsSite(contenu) {
   const RE_CP = /^\d{5}(\s*\|.*)?$/;
   const noms = [];
@@ -3575,13 +3579,18 @@ function pdnExtraireNomsSite(contenu) {
         if (t) textes.push(t);
       }
       const i = textes.findIndex(t => RE_CP.test(t));
-      if (i >= 2) noms.push(textes[i - 2] + ' ' + textes[i - 1]);
+      if (i < 1) return;
+      const avant = textes.slice(0, i);
+      noms.push(avant.length <= 3 ? avant.join(' ') : avant.slice(-2).join(' '));
     });
     return noms;
   }
   const lignes = contenu.split(/\r?\n/).map(l => l.replace(/\s+/g, ' ').trim()).filter(Boolean);
   lignes.forEach((l, i) => {
-    if (i >= 2 && RE_CP.test(l)) noms.push(lignes[i - 2] + ' ' + lignes[i - 1]);
+    if (i < 1 || !RE_CP.test(l)) return;
+    const derniere = lignes[i - 1];
+    if (/\s/.test(derniere) || i < 2) noms.push(derniere);
+    else noms.push(lignes[i - 2] + ' ' + derniere);
   });
   return noms;
 }
@@ -3669,6 +3678,8 @@ function pdnAfficherComparaison(nomsSite, source) {
       r.identiques.map(x => `<li>${pdnEsc(x.app.nom)}</li>`).join('') + `</ul></details>`;
     texte += `\nCorrespondances exactes (${r.identiques.length}) :\n` + r.identiques.map(x => `- ${x.app.nom}`).join('\n') + '\n';
   }
+  html += `<details class="cmp-bloc"><summary>Noms lus sur le site (${nomsSite.length})</summary><ul style="margin-top:8px">` +
+    nomsSite.map(n => `<li>${pdnEsc(n)}</li>`).join('') + `</ul></details>`;
   zone.innerHTML = html;
   pdnDernierCompteRendu = texte;
   document.getElementById('comparaison-btn-copier').style.display = 'inline-flex';
