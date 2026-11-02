@@ -580,6 +580,21 @@ td a:hover { text-decoration: underline; }
   vertical-align: middle;
 }
 .users-admin-list { display: flex; flex-direction: column; gap: 8px; }
+
+/* Comparaison avec le site national */
+.cmp-bloc { border-radius: 8px; padding: 12px 14px; margin-bottom: 14px; border: 1px solid var(--gris); }
+.cmp-bloc h4 { font-size: 0.92rem; margin-bottom: 8px; }
+.cmp-bloc ul { margin: 0; padding-left: 18px; font-size: 0.88rem; line-height: 1.7; }
+.cmp-bloc summary { cursor: pointer; font-weight: 600; font-size: 0.92rem; }
+.cmp-site { background: #fef2f2; border-color: #fecaca; }
+.cmp-site h4 { color: #b91c1c; }
+.cmp-app { background: #fffbeb; border-color: #fde68a; }
+.cmp-app h4 { color: #92400e; }
+.cmp-approx { background: #eff6ff; border-color: #bfdbfe; }
+.cmp-approx h4 { color: #1e40af; }
+.cmp-ok { background: #eafaf1; border-color: #a9dfbf; }
+.cmp-ok h4, .cmp-ok summary { color: #166534; }
+.cmp-tag { font-size: 0.74rem; color: var(--gris-texte); font-style: italic; }
 .user-admin-item {
   display: flex; align-items: center; gap: 12px;
   padding: 10px 14px;
@@ -1611,8 +1626,9 @@ th.mail-cb-th {
 <!-- ADMIN -->
 <div id="screen-admin" class="screen">
   <!-- Statistiques -->
-  <div class="admin-section" style="text-align:center">
+  <div class="admin-section" style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
     <button class="btn btn-primary" onclick="ouvrirStatistiques()">📊 Visualiser les statistiques</button>
+    <button class="btn btn-primary" onclick="comparerAvecSiteNational()">🔍 Comparer avec le site national</button>
   </div>
 
   <!-- Invitations -->
@@ -1965,6 +1981,34 @@ th.mail-cb-th {
         <span><span class="dot stats-date-orange"></span>1 à 2 mois</span>
         <span><span class="dot stats-date-rouge"></span>Plus de 2 mois</span>
         <span><span class="dot stats-date-jamais"></span>Jamais connecté(e)</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL COMPARAISON SITE NATIONAL (admin) ===== -->
+<div class="modal-overlay" id="modal-comparaison">
+  <div class="modal" style="max-width:720px">
+    <div class="modal-header">
+      <h3>🔍 Comparaison avec le site national</h3>
+      <button class="modal-close" onclick="closeModal('modal-comparaison')">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:0.78rem;color:var(--gris-texte);margin-bottom:14px;font-style:italic">
+        Compare les noms des fiches de l'appli avec la page du Gers sur promeneursdunet.fr (accents, majuscules et ordre prénom/nom ignorés). Lecture seule : rien n'est modifié.
+      </p>
+      <div id="comparaison-resultat"></div>
+      <div id="comparaison-collage" style="display:none;margin-top:14px">
+        <p id="comparaison-collage-msg" style="font-size:0.85rem;margin-bottom:8px"></p>
+        <p style="font-size:0.85rem;margin-bottom:8px">
+          Ouvrez <a href="https://www.promeneursdunet.fr/departements/gers" target="_blank" rel="noopener">la page du site</a>, sélectionnez tout (Ctrl+A), copiez (Ctrl+C), puis collez ici.
+        </p>
+        <textarea id="comparaison-collage-texte" rows="6" placeholder="Collez ici le contenu de la page"></textarea>
+        <button class="btn btn-primary btn-sm" style="margin-top:8px" onclick="comparerDepuisCollage()">Comparer ce contenu</button>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
+        <button class="btn btn-secondary btn-sm" id="comparaison-btn-copier" style="display:none" onclick="copierCompteRendu()">📋 Copier le compte rendu</button>
+        <button class="btn btn-secondary btn-sm" onclick="basculerCollageComparaison()">✍️ Coller le contenu à la main</button>
       </div>
     </div>
   </div>
@@ -3453,6 +3497,219 @@ window.basculerMasque = async function(id, estMasque) {
   updateCompteur();
   renderTableau();
   renderUsersAdmin();
+};
+
+// ===== COMPARAISON AVEC LA LISTE DU SITE NATIONAL (admin) =====
+const PDN_SITE_URL = 'https://www.promeneursdunet.fr/departements/gers';
+let pdnDernierCompteRendu = '';
+
+function pdnEsc(s) {
+  return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// Clé de comparaison : sans accents, sans casse, sans ponctuation, mots triés.
+// "DUPONT Jean", "Jean Dupont" et "Dupont-Jean" donnent la même clé.
+function pdnCle(s) {
+  return String(s || '')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase().replace(/œ/g, 'oe').replace(/æ/g, 'ae')
+    .replace(/[^a-z0-9]+/g, ' ').trim()
+    .split(' ').filter(Boolean).sort().join(' ');
+}
+
+function pdnDistance(a, b) {
+  let prev = Array.from({ length: b.length + 1 }, (_, j) => j);
+  for (let i = 1; i <= a.length; i++) {
+    const cur = [i];
+    for (let j = 1; j <= b.length; j++) {
+      cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    }
+    prev = cur;
+  }
+  return prev[b.length];
+}
+
+// Récupère la page du site. Essai direct, puis via deux proxys CORS publics.
+// Retourne le HTML, ou null si tout échoue.
+async function pdnRecupererPageSite() {
+  const cibles = [
+    PDN_SITE_URL,
+    'https://api.allorigins.win/raw?url=' + encodeURIComponent(PDN_SITE_URL),
+    'https://corsproxy.io/?' + encodeURIComponent(PDN_SITE_URL)
+  ];
+  for (const url of cibles) {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 10000);
+    try {
+      const resp = await fetch(url, { signal: ctrl.signal });
+      if (!resp.ok) continue;
+      const texte = await resp.text();
+      if (texte.includes('/promeneur/gers/')) return texte;
+    } catch (e) {
+      // on passe à la cible suivante
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+  return null;
+}
+
+// Extrait les noms "Prénom Nom" depuis le HTML de la page, ou depuis un texte copié-collé.
+// Repère chaque fiche par sa ligne "32300 | Commune" : les deux textes qui la précèdent
+// sont le prénom et le nom.
+function pdnExtraireNomsSite(contenu) {
+  const RE_CP = /^\d{5}(\s*\|.*)?$/;
+  const noms = [];
+  if (/<a\s[^>]*href=/i.test(contenu)) {
+    const docHtml = new DOMParser().parseFromString(contenu, 'text/html');
+    const cartes = new Set();
+    docHtml.querySelectorAll('a[href*="/promeneur/gers/"]').forEach(a => {
+      let carte = a.parentElement;
+      while (carte && !/\d{5}\s*\|/.test(carte.textContent)) carte = carte.parentElement;
+      if (!carte || cartes.has(carte)) return;
+      cartes.add(carte);
+      const textes = [];
+      const walker = docHtml.createTreeWalker(carte, NodeFilter.SHOW_TEXT);
+      while (walker.nextNode()) {
+        const t = walker.currentNode.nodeValue.replace(/\s+/g, ' ').trim();
+        if (t) textes.push(t);
+      }
+      const i = textes.findIndex(t => RE_CP.test(t));
+      if (i >= 2) noms.push(textes[i - 2] + ' ' + textes[i - 1]);
+    });
+    return noms;
+  }
+  const lignes = contenu.split(/\r?\n/).map(l => l.replace(/\s+/g, ' ').trim()).filter(Boolean);
+  lignes.forEach((l, i) => {
+    if (i >= 2 && RE_CP.test(l)) noms.push(lignes[i - 2] + ' ' + lignes[i - 1]);
+  });
+  return noms;
+}
+
+function pdnComparer(nomsSite) {
+  const appItems = allPromeneurs.filter(p => !p.desactive).map(p => ({ p, cle: pdnCle(p.nom) }));
+  const desactives = allPromeneurs.filter(p => p.desactive).map(p => ({ p, cle: pdnCle(p.nom) }));
+  const appRestants = [...appItems];
+  const identiques = [], approx = [], siteSeul = [];
+  const siteRestants = [];
+
+  // 1. Correspondances exactes
+  nomsSite.forEach(nom => {
+    const cle = pdnCle(nom);
+    const i = appRestants.findIndex(a => a.cle === cle);
+    if (i >= 0) { identiques.push({ site: nom, app: appRestants[i].p }); appRestants.splice(i, 1); }
+    else siteRestants.push({ nom, cle });
+  });
+
+  // 2. Correspondances approchantes (2 caractères d'écart au plus), à vérifier
+  siteRestants.forEach(s => {
+    let meilleur = -1, dmin = Infinity;
+    appRestants.forEach((a, i) => {
+      const d = pdnDistance(s.cle, a.cle);
+      if (d < dmin) { dmin = d; meilleur = i; }
+    });
+    if (meilleur >= 0 && dmin <= 2) {
+      approx.push({ site: s.nom, app: appRestants[meilleur].p });
+      appRestants.splice(meilleur, 1);
+    } else {
+      const des = desactives.find(d => d.cle === s.cle);
+      siteSeul.push({ nom: s.nom, desactive: !!des });
+    }
+  });
+
+  return { identiques, approx, siteSeul, appSeul: appRestants.map(a => a.p), nbApp: appItems.length };
+}
+
+function pdnTagsApp(p) {
+  const t = [];
+  if (p.public === 'Coordinateur') t.push('coordinateur');
+  if (p.masque) t.push('fiche masquée');
+  return t.length ? ` <span class="cmp-tag">(${t.join(', ')})</span>` : '';
+}
+
+function pdnAfficherComparaison(nomsSite, source) {
+  const zone = document.getElementById('comparaison-resultat');
+  if (!nomsSite.length) {
+    zone.innerHTML = `<div class="cmp-bloc cmp-site"><h4>Aucun promeneur reconnu dans le contenu</h4>
+      <p style="font-size:0.88rem">La structure de la page n'a pas pu être lue. Essayez de coller le contenu à la main.</p></div>`;
+    document.getElementById('comparaison-btn-copier').style.display = 'none';
+    document.getElementById('comparaison-collage').style.display = 'block';
+    document.getElementById('comparaison-collage-msg').textContent = '';
+    return;
+  }
+  const r = pdnComparer(nomsSite);
+  const ecarts = r.siteSeul.length + r.appSeul.length + r.approx.length;
+  let html = `<p style="font-size:0.9rem;margin-bottom:14px"><strong>Site : ${nomsSite.length}</strong> promeneurs. <strong>Appli : ${r.nbApp}</strong> fiches actives (comptes désactivés exclus). Source : ${pdnEsc(source)}.</p>`;
+  let texte = `Comparaison appli / site national (promeneursdunet.fr, Gers)\n${new Date().toLocaleString('fr-FR')}\nSite : ${nomsSite.length} promeneurs. Appli : ${r.nbApp} fiches actives. Source : ${source}.\n`;
+
+  if (!ecarts) {
+    html += `<div class="cmp-bloc cmp-ok"><h4>✅ Les deux listes concordent</h4></div>`;
+    texte += `\nLes deux listes concordent.\n`;
+  }
+  if (r.siteSeul.length) {
+    html += `<div class="cmp-bloc cmp-site"><h4>Sur le site, absents de l'appli (${r.siteSeul.length})</h4><ul>` +
+      r.siteSeul.map(s => `<li>${pdnEsc(s.nom)}${s.desactive ? ' <span class="cmp-tag">(fiche désactivée dans l\'appli)</span>' : ''}</li>`).join('') + `</ul></div>`;
+    texte += `\nSur le site, absents de l'appli (${r.siteSeul.length}) :\n` +
+      r.siteSeul.map(s => `- ${s.nom}${s.desactive ? ' (fiche désactivée dans l\'appli)' : ''}`).join('\n') + '\n';
+  }
+  if (r.appSeul.length) {
+    html += `<div class="cmp-bloc cmp-app"><h4>Dans l'appli, absents du site (${r.appSeul.length})</h4><ul>` +
+      r.appSeul.map(p => `<li>${pdnEsc(p.nom || '(sans nom)')}${pdnTagsApp(p)}</li>`).join('') + `</ul></div>`;
+    texte += `\nDans l'appli, absents du site (${r.appSeul.length}) :\n` +
+      r.appSeul.map(p => `- ${p.nom || '(sans nom)'}${p.public === 'Coordinateur' ? ' (coordinateur)' : ''}${p.masque ? ' (fiche masquée)' : ''}`).join('\n') + '\n';
+  }
+  if (r.approx.length) {
+    html += `<div class="cmp-bloc cmp-approx"><h4>Correspondances approchantes, à vérifier (${r.approx.length})</h4><ul>` +
+      r.approx.map(x => `<li>Site : ${pdnEsc(x.site)} <span class="cmp-tag">↔</span> Appli : ${pdnEsc(x.app.nom)}</li>`).join('') + `</ul></div>`;
+    texte += `\nCorrespondances approchantes, à vérifier (${r.approx.length}) :\n` +
+      r.approx.map(x => `- Site : ${x.site} / Appli : ${x.app.nom}`).join('\n') + '\n';
+  }
+  if (r.identiques.length) {
+    html += `<details class="cmp-bloc cmp-ok"><summary>Correspondances exactes (${r.identiques.length})</summary><ul style="margin-top:8px">` +
+      r.identiques.map(x => `<li>${pdnEsc(x.app.nom)}</li>`).join('') + `</ul></details>`;
+    texte += `\nCorrespondances exactes (${r.identiques.length}) :\n` + r.identiques.map(x => `- ${x.app.nom}`).join('\n') + '\n';
+  }
+  zone.innerHTML = html;
+  pdnDernierCompteRendu = texte;
+  document.getElementById('comparaison-btn-copier').style.display = 'inline-flex';
+}
+
+window.comparerAvecSiteNational = async function() {
+  document.getElementById('modal-comparaison').classList.add('open');
+  document.getElementById('comparaison-btn-copier').style.display = 'none';
+  document.getElementById('comparaison-collage').style.display = 'none';
+  document.getElementById('comparaison-resultat').innerHTML =
+    '<p style="font-size:0.9rem;color:var(--gris-texte)">⏳ Récupération de la page du site…</p>';
+  const html = await pdnRecupererPageSite();
+  if (!html) {
+    document.getElementById('comparaison-resultat').innerHTML = '';
+    document.getElementById('comparaison-collage-msg').textContent =
+      'La page du site n\'a pas pu être récupérée automatiquement (accès bloqué par le navigateur ou réseau indisponible).';
+    document.getElementById('comparaison-collage').style.display = 'block';
+    return;
+  }
+  pdnAfficherComparaison(pdnExtraireNomsSite(html), 'page récupérée automatiquement');
+};
+
+window.comparerDepuisCollage = function() {
+  const contenu = document.getElementById('comparaison-collage-texte').value;
+  if (!contenu.trim()) { toast('Collez d\'abord le contenu de la page'); return; }
+  pdnAfficherComparaison(pdnExtraireNomsSite(contenu), 'contenu collé à la main');
+};
+
+window.basculerCollageComparaison = function() {
+  const zone = document.getElementById('comparaison-collage');
+  document.getElementById('comparaison-collage-msg').textContent = '';
+  zone.style.display = zone.style.display === 'none' ? 'block' : 'none';
+};
+
+window.copierCompteRendu = async function() {
+  try {
+    await navigator.clipboard.writeText(pdnDernierCompteRendu);
+    toast('Compte rendu copié');
+  } catch (e) {
+    toast('Copie impossible, sélectionnez le texte à la main');
+  }
 };
 
 window.toggleInvType = function() {
